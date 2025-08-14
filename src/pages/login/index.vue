@@ -57,15 +57,20 @@
         >
           {{ loading ? "登录中..." : "登 录" }}
         </el-button>
+        <el-button
+          class="form-submit"
+          type="success"
+          @click="superLogin"
+        >
+          超级管理员
+        </el-button>
       </el-form>
       <p class="to-register">
         没有账号?
         <router-link to="/register">立即注册</router-link>
       </p>
       <p class="tip">
-        登录即表示同意<a href="https://toollong.icu/#/about" target="_blank"
-          >《用户协议》</a
-        ><a href="https://toollong.icu/#/about" target="_blank">《隐私政策》</a>
+        登录即表示同意<a>《用户协议》</a><a>《隐私政策》</a>
       </p>
     </div>
     <div class="login-footer">
@@ -74,10 +79,7 @@
         <a @click="showQRCode = true">联系我们</a>
         <router-link to="/about" target="_blank">反馈建议</router-link>
       </div>
-      <p>Copyright © 2022 toollong. All Rights Reserved.</p>
-      <a href="https://beian.miit.gov.cn/" target="_blank">
-        鲁ICP备2022024710号-1
-      </a>
+      <p>Copyright © 2024. All Rights Reserved.</p>
     </div>
     <vue-particles
       color="#dedede"
@@ -137,6 +139,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { reqLogin } from "@/api";
 import SlideVerify from "vue3-slide-verify";
+import { setCookie } from "@/utils/cookie";
 
 export default {
   name: "Login",
@@ -178,6 +181,11 @@ export default {
       });
     };
 
+    const superLogin = () => {
+      setCookie("super", "1", 1);
+      router.push({ name: "home" });
+    };
+
     const showQRCode = ref(false);
     const showVerification = ref(false);
     const verifyRef = ref();
@@ -199,6 +207,11 @@ export default {
         loading.value = true;
         let result = await reqLogin(loginForm);
         if (result.success) {
+          if (loginForm.loginFree) {
+            setCookie("uid", result.data.userId, 7 * 24 * 3600);
+          } else {
+            setCookie("uid", result.data.userId);
+          }
           router.push({ name: "home" });
           ElMessage.success("登录成功！");
         } else {
@@ -224,6 +237,7 @@ export default {
       loginForm,
       rules,
       login,
+      superLogin,
       showQRCode,
       showVerification,
       verifyRef,

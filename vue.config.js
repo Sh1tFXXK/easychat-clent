@@ -28,11 +28,15 @@ module.exports = defineConfig({
     ],
   },
   devServer: {
-    port: 8080,
+    port: 8088,
     allowedHosts: "all",
     proxy: {
       '/api': {
-        target: 'https://toollong.icu'
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api': ''
+        }
       }
     }
   }

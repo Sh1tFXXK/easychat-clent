@@ -1,9 +1,9 @@
 <template>
   <div>
-    <div class="favorites">
+    <div class="collections">
       <header>
         <div>
-          <span>Favorites</span>
+          <span>Collections</span>
           <ul>
             <li>
               <el-tooltip
@@ -26,7 +26,7 @@
             </li>
           </ul>
         </div>
-        <p>关心，是最长情的告白。</p>
+        <p>收藏，是为了更好地回顾。</p>
       </header>
       <form @submit.prevent>
         <el-autocomplete
@@ -43,8 +43,8 @@
         </el-autocomplete>
       </form>
       <el-empty
-          class="favorites-empty"
-          description="还没有特别关心哦..."
+          class="collections-empty"
+          description="还没有收藏哦..."
         >
           <template #image><icon-mdi-forum-remove-outline /></template>
         </el-empty>
@@ -55,7 +55,7 @@
 <script>
 import { ref } from "vue";
 export default {
-  name: "SidebarFavorites",
+  name: "SidebarCollections",
   setup() {
     const searchValue = ref("");
     const search = (queryString, callback) => {
@@ -71,48 +71,48 @@ export default {
 </script>
 
 <style scoped>
-.favorites {
+.collections {
   display: flex;
   width: 400px;
   flex-flow: column nowrap;
   flex: 1;
 }
-.favorites header {
+.collections header {
   display: flex;
   flex-flow: column nowrap;
   justify-content: flex-end;
   height: 100px;
   padding: 0 30px 0 35px;
 }
-.favorites header div {
+.collections header div {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2px;
 }
-.favorites header span {
+.collections header span {
   font-size: 32px;
   font-weight: 600;
   color: var(--theme-color-light-1);
 }
-.favorites header p {
+.collections header p {
   color: var(--theme-color-light-2);
   margin: 0;
   padding-left: 2px;
 }
-.favorites header ul {
+.collections header ul {
   list-style: none;
   margin-bottom: 0;
 }
-.favorites header ul li {
+.collections header ul li {
   display: inline-block;
 }
-.favorites form {
+.collections form {
   display: flex;
   flex-flow: column nowrap;
   padding: 24px 30px;
 }
-.favorites-empty {
+.collections-empty {
   height: 730px;
   justify-content: flex-start;
   padding-top: 150px;

@@ -7,97 +7,39 @@
         </a>
       </li>
       <li>
-        <el-tooltip
-          effect="light"
-          content="聊天"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a :class="{ active: activeIndex === 1 }" @click="activeIndex = 1">
-            <el-badge class="badge" is-dot :hidden="newMsgCount < 1">
-              <icon-ep-chat-round />
-            </el-badge>
-          </a>
-        </el-tooltip>
+        <a :class="{ active: activeIndex === 1 }" @click="activeIndex = 1" title="聊天">
+          <el-badge class="badge" is-dot :hidden="newMsgCount < 1">
+            <icon-ep-chat-round />
+          </el-badge>
+        </a>
       </li>
       <li>
-        <el-tooltip
-          effect="light"
-          content="聊天组"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a :class="{ active: activeIndex === 2 }" @click="activeIndex = 2">
-            <icon-ep-connection />
-          </a>
-        </el-tooltip>
+        <a :class="{ active: activeIndex === 2 }" @click="activeIndex = 2" title="聊天组">
+          <icon-ep-connection />
+        </a>
       </li>
       <li>
-        <el-tooltip
-          effect="light"
-          content="好友"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a :class="{ active: activeIndex === 3 }" @click="activeIndex = 3">
-            <el-badge class="badge" is-dot :hidden="true">
-              <icon-ep-user />
-            </el-badge>
-          </a>
-        </el-tooltip>
+        <a :class="{ active: activeIndex === 3 }" @click="activeIndex = 3" title="好友">
+          <el-badge class="badge" is-dot :hidden="true">
+            <icon-ep-user />
+          </el-badge>
+        </a>
       </li>
       <li>
-        <el-tooltip
-          effect="light"
-          content="特别关心"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a :class="{ active: activeIndex === 4 }" @click="activeIndex = 4">
-            <icon-ep-star />
-          </a>
-        </el-tooltip>
+        <a :class="{ active: activeIndex === 4 }" @click="activeIndex = 4" title="特别关心">
+          <icon-ep-star />
+        </a>
       </li>
       <li class="space">
-        <el-tooltip
-          effect="light"
-          content="收藏"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a :class="{ active: activeIndex === 5 }" @click="activeIndex = 5">
-            <icon-ep-collection />
-          </a>
-        </el-tooltip>
+        <a :class="{ active: activeIndex === 5 }" @click="activeIndex = 5" title="收藏">
+          <icon-ep-collection />
+        </a>
       </li>
       <li>
-        <el-dropdown trigger="click" placement="top">
-          <el-tooltip
-            effect="light"
-            content="小抽屉"
-            placement="right"
-            :offset="2"
-            :show-arrow="false"
-            :hide-after="100"
-            :enterable="false"
-          >
-            <a><icon-ep-takeaway-box /></a>
-          </el-tooltip>
+        <el-dropdown>
+          <a class="dropdown-link" title="小抽屉">
+            <icon-ep-takeaway-box />
+          </a>
           <template #dropdown>
             <el-dropdown-menu class="dropdown-box">
               <el-dropdown-item @click="showSearch = true">
@@ -117,66 +59,34 @@
         </el-dropdown>
       </li>
       <li v-if="mode === 'light'">
-        <el-tooltip
-          effect="light"
-          content="夜间模式"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a @click="mode = 'dark'"><icon-ep-moon /></a>
-        </el-tooltip>
+        <a @click="mode = 'dark'" title="夜间模式"><icon-ep-moon /></a>
       </li>
       <li v-if="mode === 'dark'">
-        <el-tooltip
-          effect="light"
-          content="日间模式"
-          placement="right"
-          :offset="2"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <a @click="mode = 'light'"><icon-ep-sunny /></a>
-        </el-tooltip>
+        <a @click="mode = 'light'" title="日间模式"><icon-ep-sunny /></a>
       </li>
       <li>
-        <el-dropdown trigger="click" size="large">
-          <el-tooltip
-            effect="light"
-            content="我"
-            placement="right"
-            :offset="-6"
-            :show-arrow="false"
-            :hide-after="100"
-            :enterable="false"
-          >
-            <a>
-              <el-avatar :src="user.avatar" size="large" @error="() => true">
-                <img
-                  src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
-                />
-              </el-avatar>
-            </a>
-          </el-tooltip>
+        <el-dropdown>
+          <a class="dropdown-link" title="我">
+            <el-avatar :src="user.avatar" size="large" @error="() => true">
+              <img
+                src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
+              />
+            </el-avatar>
+          </a>
           <template #dropdown>
             <el-dropdown-menu class="dropdown-user">
-              <el-dropdown-item @click="this.$emit('showProfile', user.userId)">
-                <icon-ep-postcard class="dropdown-icons" />我的资料
+              <el-dropdown-item @click="$emit('showProfile', user.userId)">
+                <icon-ep-user class="dropdown-icons" />个人资料
               </el-dropdown-item>
               <el-dropdown-item @click="showProfileEdit = true">
-                <icon-ep-edit class="dropdown-icons" />编辑资料
+                <icon-ep-edit class="dropdown-icons" />修改信息
               </el-dropdown-item>
               <el-dropdown-item @click="showSettings = true">
                 <icon-ep-setting class="dropdown-icons" />设置
               </el-dropdown-item>
               <el-dropdown-item divided @click="logout">
-                <span class="text-danger">
-                  <icon-ep-switch-button class="dropdown-icons divided" />
-                  退出登录
-                </span>
+                <icon-ep-switch-button class="dropdown-icons divided" />
+                <span class="text-danger">退出登录</span>
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -263,6 +173,11 @@ export default {
     });
     watch(menu, () => {
       activeIndex.value = menu.value;
+    });
+
+    socket.on("receiveMsg", (message) => {
+      console.log('收到新消息：', message);
+      // 后续处理逻辑
     });
 
     return {

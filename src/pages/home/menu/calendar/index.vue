@@ -75,7 +75,7 @@
 
 <script>
 import { ref, toRefs, watch } from "vue";
-import zhCn from "element-plus/lib/locale/lang/zh-cn";
+import zhCn from "element-plus/dist/locale/zh-cn.mjs";
 
 export default {
   name: "Calendar",

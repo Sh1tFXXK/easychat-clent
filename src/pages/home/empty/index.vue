@@ -8,10 +8,7 @@
         所 有 的 相 遇 都 是 久 别 重 逢，该 遇 见 的 人 总 归 不 晚
       </p>
       <div class="footer">
-        <p>Copyright © 2022 toollong. All Rights Reserved.</p>
-        <a href="https://beian.miit.gov.cn/" target="_blank">
-          鲁ICP备2022024710号-1
-        </a>
+        <p>Copyright © 2024. All Rights Reserved.</p>
       </div>
     </template>
   </el-empty>

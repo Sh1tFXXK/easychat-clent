@@ -44,6 +44,6 @@ export const reqGetFriendVerify = (params) => axios.get('/user/friendVerify', { 
 
 export const reqGetHistory = (params) => axios.get('/chat/chats/chatHistory', { params: params });
 
-export const reqSavePictureMsg = (data) => axios.post('/chat/chats/savePictureMsg', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const reqSavePictureMsg = (data) => axios.post('/chat/chats/savePictureMsg', data);
 
-export const reqSaveFileMsg = (data) => axios.post('/chat/chats/saveFileMsg', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const reqSaveFileMsg = (data) => axios.post('/chat/chats/saveFileMsg', data);

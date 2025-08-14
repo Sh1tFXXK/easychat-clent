@@ -59,7 +59,7 @@
               <el-avatar
                 :src="
                   item.friendAvatar
-                    ? 'https://toollong.icu/easychat' + item.friendAvatar
+                    ? item.friendAvatar.startsWith('http') ? item.friendAvatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + item.friendAvatar
                     : ''
                 "
                 @error="() => true"
@@ -110,6 +110,10 @@
           <template #image><icon-mdi-forum-remove-outline /></template>
         </el-empty>
         <div v-else class="chats-body">
+          <!-- 测试显示 -->
+          <div style="padding: 10px; background: #e6f7ff; margin: 10px; border-radius: 4px; border: 1px solid #91d5ff;">
+            <p>✅ 数据加载成功！聊天列表长度: {{ chatList.length }}</p>
+          </div>
           <el-scrollbar max-height="730px">
             <div v-auto-animate>
               <div
@@ -129,7 +133,7 @@
                   <el-avatar
                     :src="
                       chat.friendAvatar
-                        ? 'https://toollong.icu/easychat' + chat.friendAvatar
+                        ? chat.friendAvatar.startsWith('http') ? chat.friendAvatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + chat.friendAvatar
                         : ''
                     "
                     size="large"
@@ -146,25 +150,25 @@
                       {{
                         chat.friendRemark
                           ? chat.friendRemark
-                          : chat.friendNickName
+                          : chat.friendNickName || chat.friendNickname
                       }}
                     </span>
                     <p>
                       {{
-                        chat.latestChatHistory.type === 0
+                        chat.latestChatHistory && chat.latestChatHistory.type === 0
                           ? chat.latestChatHistory.content
-                          : chat.latestChatHistory.type === 1
+                          : chat.latestChatHistory && chat.latestChatHistory.type === 1
                           ? "[图片]"
-                          : chat.latestChatHistory.type === 2
+                          : chat.latestChatHistory && chat.latestChatHistory.type === 2
                           ? "[文件]"
-                          : chat.latestChatHistory.type === 3
+                          : chat.latestChatHistory && chat.latestChatHistory.type === 3
                           ? "[语音]"
                           : ""
                       }}
                     </p>
                   </div>
                   <div>
-                    <small v-if="chat.latestChatHistory.createTime">
+                    <small v-if="chat.latestChatHistory && chat.latestChatHistory.createTime">
                       {{
                         compareDate(chat.latestChatHistory.createTime)
                           ? formatDate(
@@ -194,6 +198,7 @@
                     </small>
                     <div
                       v-if="
+                        chat.latestChatHistory && 
                         chat.latestChatHistory.senderId !== user.userId &&
                         chat.latestChatHistory.hasRead === 0
                       "
@@ -279,6 +284,11 @@ export default {
     const loading = ref(false);
     const currentSession = ref("");
 
+    // 添加调试信息
+    watch(chatList, (newVal) => {
+      console.log('[SidebarChats] chatList 更新:', newVal);
+    }, { immediate: true });
+
     const showChatAdd = ref(false);
     const addNewChat = (friend) => {
       // 发送请求修改该好友的sessionId和sessionTime(sessionId需要双方统一！)
@@ -306,7 +316,7 @@ export default {
             if (chat.friendRemark) {
               return chat.friendRemark.includes(queryString);
             } else {
-              return chat.friendNickName.includes(queryString);
+              return (chat.friendNickName || chat.friendNickname || '').includes(queryString);
             }
           })
         : chatList.value;
@@ -314,7 +324,7 @@ export default {
         results.map((item) => {
           return {
             ...item,
-            value: item.friendRemark ? item.friendRemark : item.friendNickName,
+            value: item.friendRemark ? item.friendRemark : (item.friendNickName || item.friendNickname),
           };
         })
       );

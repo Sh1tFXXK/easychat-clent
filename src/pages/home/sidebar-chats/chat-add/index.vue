@@ -50,7 +50,7 @@
 import { computed, ref, toRefs, watch } from "vue";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
-import zhCn from "element-plus/lib/locale/lang/zh-cn";
+import zhCn from "element-plus/dist/locale/zh-cn.mjs";
 
 export default {
   name: "ChatAdd",

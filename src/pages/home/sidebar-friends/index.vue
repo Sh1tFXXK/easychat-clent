@@ -101,7 +101,7 @@
                   <el-avatar
                     :src="
                       friend.friendAvatar
-                        ? 'https://toollong.icu/easychat' + friend.friendAvatar
+                        ? friend.friendAvatar.startsWith('http') ? friend.friendAvatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.friendAvatar
                         : ''
                     "
                     :size="45"
@@ -119,7 +119,7 @@
                     <el-avatar
                       :src="
                         friend.friendAvatar
-                          ? 'https://toollong.icu/easychat' +
+                          ? friend.friendAvatar.startsWith('http') ? friend.friendAvatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' +
                             friend.friendAvatar
                           : ''
                       "
@@ -136,7 +136,7 @@
                   <p class="tags" v-if="friend.friendTags">
                     <el-space wrap>
                       <el-tag
-                        v-for="tag in friend.friendTags.split(',')"
+                        v-for="tag in friend.friendTags || []"
                         :key="tag"
                         size="small"
                       >

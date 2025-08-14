@@ -4,9 +4,9 @@
       <div class="about-header"><img src="/images/logo.svg" /></div>
       <div class="about-body">
         <p class="introduction">
-          <a href="https://toollong.icu" target="_blank">EasyChat</a>
-          是一个可以在线聊天的即时通讯平台，完全由个人设计和开发，初衷主要是觉得好玩儿，顺便学习一些新东西，所以网站有些简陋，属实是本人的能力和财力有限。
-          网站没有任何付费内容，所有内容完全免费，欢迎大家使用体验，也期待大佬们的交流与反馈。
+          <a>EasyChat</a>
+          是一个可以在线聊天的即时通讯平台。
+          网站没有任何付费内容，所有内容完全免费，欢迎大家使用体验。
         </p>
         <el-collapse class="collapse" v-model="activeName" accordion>
           <el-collapse-item title="功能介绍" name="1">
@@ -114,17 +114,6 @@
         </el-collapse>
 
         <div>
-          <p class="email">
-            我的邮箱：toollong@163.com
-            <a @click="showQRCode = true">想加微信？</a>
-          </p>
-          <p class="blog">
-            我的博客：<a
-              href="https://blog.csdn.net/weixin_49523761"
-              target="_blank"
-              >https://blog.csdn.net/weixin_49523761</a
-            >
-          </p>
           <p class="attention">
             <span class="title">注意：</span
             >本网站仅供学习交流使用，由于网站的安全保障和加密措施并不完善，<span
@@ -135,10 +124,7 @@
         </div>
       </div>
       <div class="about-footer">
-        <p>Copyright © 2022 toollong. All Rights Reserved.</p>
-        <a href="https://beian.miit.gov.cn/" target="_blank">
-          鲁ICP备2022024710号-1
-        </a>
+        <p>Copyright © 2024. All Rights Reserved.</p>
       </div>
     </el-scrollbar>
     <el-dialog

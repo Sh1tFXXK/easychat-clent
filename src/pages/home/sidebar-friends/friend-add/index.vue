@@ -46,7 +46,7 @@
                     <el-avatar
                       :src="
                         user.avatar
-                          ? 'https://toollong.icu/easychat' + user.avatar
+                          ? user.avatar.startsWith('http') ? user.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + user.avatar
                           : ''
                       "
                       size="large"
@@ -116,7 +116,7 @@
               <el-avatar
                 :src="
                   friend.avatar
-                    ? 'https://toollong.icu/easychat' + friend.avatar
+                    ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
                     : ''
                 "
                 :size="60"

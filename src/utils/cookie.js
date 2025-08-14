@@ -10,7 +10,7 @@ export function getCookie(name) {
 
 export function setCookie(name, value, seconds) {
     var date = new Date();
-    date.setTime(date.getTime + seconds * 1000);
+    date.setTime(date.getTime() + seconds * 1000);
     var expires = "expires=" + date.toGMTString();
     document.cookie = name + "=" + value + "; " + expires;
 }

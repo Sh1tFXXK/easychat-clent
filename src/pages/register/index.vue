@@ -113,10 +113,7 @@
         <a @click="showQRCode = true">联系我们</a>
         <router-link to="/about" target="_blank">反馈建议</router-link>
       </div>
-      <p>Copyright © 2022 toollong. All Rights Reserved.</p>
-      <a href="https://beian.miit.gov.cn/" target="_blank">
-        鲁ICP备2022024710号-1
-      </a>
+      <p>Copyright © 2024. All Rights Reserved.</p>
     </div>
     <el-dialog
       v-model="showQRCode"
@@ -161,7 +158,7 @@ export default {
     });
     const validateUsername = async (rule, value, callback) => {
       let result = await reqValidateUsername({ username: value });
-      if (result.success) {
+      if (result.success === false) {
         callback(new Error("该用户名已被占用或不可注册！"));
       } else {
         callback();

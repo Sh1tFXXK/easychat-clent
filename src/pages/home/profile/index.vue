@@ -20,19 +20,27 @@
     </template>
     <div class="profile">
       <figure>
-        <el-avatar
-          :src="
-            userInfo.avatar
-              ? 'https://toollong.icu/easychat' + userInfo.avatar
-              : ''
-          "
-          :size="80"
-          @error="() => true"
+        <el-upload
+          action=""
+          :show-file-list="false"
+          :auto-upload="false"
+          accept="image/jpeg,image/png,image/jpg"
+          @change="changeAvatar"
         >
-          <img
-            src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
-          />
-        </el-avatar>
+          <el-avatar
+            :src="
+              userInfo.avatar
+                ? userInfo.avatar.startsWith('http') ? userInfo.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + userInfo.avatar
+                : ''
+            "
+            :size="80"
+            @error="() => true"
+          >
+            <img
+              src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
+            />
+          </el-avatar>
+        </el-upload>
       </figure>
       <span class="remark">{{ remark }}</span>
       <div class="tags">
@@ -111,7 +119,8 @@
 <script>
 import { computed, inject, ref, toRefs, watch } from "vue";
 import { useStore } from "vuex";
-import { mockGetUserInfo, reqGetUserInfo } from "@/api";
+import { ElMessage } from "element-plus";
+import { reqGetUserInfo, reqChangeAvatar } from "@/api";
 import { formatDate } from "@/utils/date";
 
 export default {
@@ -128,7 +137,7 @@ export default {
     const isShow = ref(false);
     const open = async () => {
       // let result = await mockGetUserInfo();
-      let result = await reqGetUserInfo({ id: show.value });
+      let result = await reqGetUserInfo({ id: show.value.toString() });
       if (result.success) {
         userInfo.value = result.data;
         tags.value = result.data.tags ? result.data.tags.split(",") : [];
@@ -155,6 +164,30 @@ export default {
     const remark = ref("");
     const tags = ref([]);
 
+    const changeAvatar = async (file) => {
+      if (show.value !== user.userId) return;
+      let types = ["image/jpeg", "image/png", "image/jpg"];
+      if (types.indexOf(file.raw.type) === -1) {
+        ElMessage.warning("上传的图片仅支持 JPG 或 PNG 格式！");
+        return;
+      }
+      if (file.raw.size / 1024 / 1024 > 2) {
+        ElMessage.warning("上传的图片大小不能超过 2MB！");
+        return;
+      }
+      let formData = new FormData();
+      formData.append("avatar", file.raw);
+      formData.append("userId", user.userId);
+      let result = await reqChangeAvatar(formData);
+      if (result.success) {
+        userInfo.value.avatar = result.data.avatar;
+        user.avatar = result.data.avatar;
+        ElMessage.success("更新成功");
+      } else {
+        ElMessage.error("网络异常，请重试！");
+      }
+    };
+
     watch(show, () => {
       if (show.value) {
         isShow.value = true;
@@ -169,6 +202,7 @@ export default {
       remark,
       tags,
       formatDate,
+      changeAvatar,
     };
   },
 };

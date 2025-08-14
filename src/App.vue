@@ -3,12 +3,13 @@
 </template>
 
 <script>
-import { nextTick, provide, ref } from "vue";
+import { nextTick, provide, ref, onMounted, getCurrentInstance } from "vue";
 
 export default {
   name: "App",
   setup() {
     const isLoad = ref(true);
+    const socket = getCurrentInstance().appContext.config.globalProperties.socket;
 
     const reload = () => {
       isLoad.value = false;
@@ -18,6 +19,12 @@ export default {
     };
 
     provide("reload", reload);
+
+    onMounted(() => {
+      if (socket) {
+        socket.connect();
+      }
+    });
 
     return {
       isLoad,

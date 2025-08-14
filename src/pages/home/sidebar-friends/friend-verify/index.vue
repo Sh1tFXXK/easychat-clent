@@ -35,7 +35,7 @@
                   <el-avatar
                     :src="
                       row.senderId
-                        ? 'https://toollong.icu/easychat' +
+                        ? (row.senderId === user.userId ? row.receiverAvatar : row.senderAvatar).startsWith('http') ? (row.senderId === user.userId ? row.receiverAvatar : row.senderAvatar) : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' +
                           (row.senderId === user.userId
                             ? row.receiverAvatar
                             : row.senderAvatar)
@@ -118,7 +118,7 @@
               <el-avatar
                 :src="
                   friend.avatar
-                    ? 'https://toollong.icu/easychat' + friend.avatar
+                    ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
                     : ''
                 "
                 :size="60"

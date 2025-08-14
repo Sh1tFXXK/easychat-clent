@@ -168,9 +168,9 @@ export default {
     const { show } = toRefs(props);
     const isShow = ref(false);
     const open = async () => {
-      let result = await reqGetUserInfo({ id: user.userId });
+      let result = await reqGetUserInfo({ id: user.userId.toString() });
       if (result.success) {
-        avatarUrl.value = "https://toollong.icu/easychat" + result.data.avatar;
+        avatarUrl.value = result.data.avatar.startsWith('http') ? result.data.avatar : "https://wc-chat.oss-cn-beijing.aliyuncs.com" + result.data.avatar;
         online.value = result.data.status === 1 ? true : false;
         tags.value = result.data.tags ? result.data.tags.split(",") : [];
       }

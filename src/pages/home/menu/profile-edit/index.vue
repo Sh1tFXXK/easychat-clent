@@ -129,7 +129,7 @@ import { inject, reactive, ref, toRefs, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { mockGetUserInfo, reqEditUserInfo, reqGetUserInfo } from "@/api";
 import { formatDate } from "@/utils/date";
-import zhCn from "element-plus/lib/locale/lang/zh-cn";
+import zhCn from "element-plus/dist/locale/zh-cn.mjs";
 import regions from "./regions.json";
 
 export default {
@@ -145,7 +145,7 @@ export default {
     const isShow = ref(false);
     const open = async () => {
       // let result = await mockGetUserInfo();
-      let result = await reqGetUserInfo({ id: user.userId });
+      let result = await reqGetUserInfo({ id: user.userId.toString() });
       if (result.success) {
         profile.nickName = result.data.nickName;
         profile.gender = result.data.gender;

@@ -1,12 +1,16 @@
 <template>
   <div class="chat">
     <header>
-      <div class="header-user">
+      <!-- 添加连接状态指示器 -->
+  <div class="connection-status" :class="{ disconnected: !isConnected }">
+    {{ isConnected ? '已连接' : '未连接' }}
+  </div>
+  <div class="header-user">
         <figure>
           <el-avatar
             :src="
               friend.avatar
-                ? 'https://toollong.icu/easychat' + friend.avatar
+                ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
                 : ''
             "
             size="large"
@@ -31,50 +35,21 @@
         </div>
       </div>
       <div class="header-action">
-        <el-tooltip
-          effect="light"
-          content="语音通话（敬请期待）"
-          placement="bottom"
-          :offset="6"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
+        <el-button type="success" size="large" text title="语音通话（敬请期待）">
+          <icon-ep-phone style="font-size: 26px" />
+        </el-button>
+        <el-button type="warning" size="large" text title="视频通话（敬请期待）">
+          <icon-ep-video-camera style="font-size: 26px" />
+        </el-button>
+        <el-button
+          type="danger"
+          size="large"
+          text
+          title="关闭窗口"
+          @click="emit('update:showChat', '')"
         >
-          <el-button type="success" size="large" text>
-            <icon-ep-phone style="font-size: 26px" />
-          </el-button>
-        </el-tooltip>
-        <el-tooltip
-          effect="light"
-          content="视频通话（敬请期待）"
-          placement="bottom"
-          :offset="6"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <el-button type="warning" size="large" text>
-            <icon-ep-video-camera style="font-size: 26px" />
-          </el-button>
-        </el-tooltip>
-        <el-tooltip
-          effect="light"
-          content="关闭窗口"
-          placement="bottom"
-          :offset="6"
-          :show-arrow="false"
-          :hide-after="100"
-          :enterable="false"
-        >
-          <el-button
-            type="danger"
-            size="large"
-            text
-            @click="this.$emit('update:showChat', '')"
-          >
-            <icon-ep-close style="font-size: 26px" />
-          </el-button>
-        </el-tooltip>
+          <icon-ep-close style="font-size: 26px" />
+        </el-button>
       </div>
     </header>
     <el-scrollbar ref="scrollbarRef">
@@ -119,7 +94,7 @@
                 <el-avatar
                   :src="
                     friend.avatar
-                      ? 'https://toollong.icu/easychat' + friend.avatar
+                      ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
                       : ''
                   "
                   :size="45"
@@ -141,15 +116,12 @@
               </div>
               <div v-if="message.type === 1" class="content-image">
                 <el-image
+                  v-if="message.content"
                   class="image"
-                  :src="
-                    message.content
-                      ? 'https://toollong.icu/easychat' + message.content
-                      : ''
-                  "
+                  :src="message.content.startsWith('http') ? message.content : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + message.content"
                   fit="contain"
                   :preview-src-list="[
-                    'https://toollong.icu/easychat' + message.content,
+                    message.content.startsWith('http') ? message.content : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + message.content,
                   ]"
                   hide-on-click-modal
                   @error="() => true"
@@ -178,7 +150,7 @@
                         class="download"
                         :href="
                           message.content
-                            ? 'https://toollong.icu/easychat' + message.content
+                            ? message.content.startsWith('http') ? message.content : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + message.content
                             : ''
                         "
                       >
@@ -197,7 +169,7 @@
       </div>
     </el-scrollbar>
     <footer>
-      <form>
+      <div class="input-area">
         <el-input
           ref="inputRef"
           type="textarea"
@@ -212,125 +184,99 @@
           @keydown.enter.exact="$event.preventDefault()"
         />
         <div class="buttons">
-          <el-tooltip
-            effect="light"
-            content="表情"
+          <el-popover
             placement="top"
-            :offset="6"
-            :show-arrow="showEmoticon"
-            :enterable="showEmoticon"
-            :hide-after="100"
+            trigger="click"
+            :width="400"
+            popper-class="emoticon-popper"
           >
-            <template v-if="showEmoticon" #content>
-              <div class="emoticons">
-                <el-scrollbar>
-                  <el-button
-                    class="emoticon-item"
-                    type="info"
-                    text
-                    v-for="emoticon in emoticons"
-                    :key="emoticon"
-                    @click="addEmoticon(emoticon)"
-                  >
-                    <span>{{ emoticon }}</span>
-                  </el-button>
-                </el-scrollbar>
-              </div>
+            <template #reference>
+              <el-button type="info" size="large" link title="表情">
+                <icon-mdi-emoticon-happy-outline style="font-size: 26px" />
+              </el-button>
             </template>
-            <el-button
-              type="info"
-              size="large"
-              link
-              @click="showEmoticon = !showEmoticon"
-            >
-              <icon-mdi-emoticon-outline style="font-size: 26px" />
-            </el-button>
-          </el-tooltip>
-          <el-tooltip
-            effect="light"
-            content="图片"
-            placement="top"
-            :offset="6"
-            :show-arrow="false"
-            :hide-after="100"
-            :enterable="false"
+            <div class="emoticons">
+              <button
+                v-for="emoticon in emoticons"
+                :key="emoticon"
+                class="emoticon-item"
+                @click="addEmoticon(emoticon)"
+              >
+                {{ emoticon }}
+              </button>
+            </div>
+          </el-popover>
+          <el-button type="info" size="large" link title="图片" @click="triggerImageUpload">
+            <icon-mdi-panorama-outline style="font-size: 26px" />
+          </el-button>
+          <input
+            ref="imageInput"
+            type="file"
+            accept="image/jpeg, image/png"
+            style="display: none"
+            @change="handleImageUpload"
+          />
+          <el-button type="info" size="large" link title="文件" @click="triggerFileUpload">
+            <icon-mdi-folder-outline style="font-size: 26px" />
+          </el-button>
+          <input
+            ref="fileInput"
+            type="file"
+            style="display: none"
+            @change="handleFileUpload"
+          />
+          <el-button type="info" size="large" link title="语音（暂不支持）">
+            <icon-ep-microphone style="font-size: 26px" />
+          </el-button>
+          <button
+            class="send"
+            type="button"
+            title="发送"
+            :disabled="inputValue.length === 0"
+            @click="sendMessage"
           >
-            <el-button type="info" size="large" link @click="uploadImg">
-              <icon-mdi-panorama-outline style="font-size: 26px" />
-            </el-button>
-          </el-tooltip>
-          <el-tooltip
-            effect="light"
-            content="文件"
-            placement="top"
-            :offset="6"
-            :show-arrow="false"
-            :hide-after="100"
-            :enterable="false"
-          >
-            <el-button type="info" size="large" link @click="uploadFile">
-              <icon-mdi-folder-outline style="font-size: 26px" />
-            </el-button>
-          </el-tooltip>
-          <el-tooltip
-            effect="light"
-            content="语音（暂不支持）"
-            placement="top"
-            :offset="6"
-            :show-arrow="false"
-            :hide-after="100"
-            :enterable="false"
-          >
-            <el-button type="info" size="large" link>
-              <icon-ep-microphone style="font-size: 26px" />
-            </el-button>
-          </el-tooltip>
-          <el-tooltip
-            effect="light"
-            content="发送"
-            placement="top"
-            :offset="6"
-            :show-arrow="false"
-            :hide-after="100"
-            :enterable="false"
-          >
-            <el-button
-              class="send"
-              type="primary"
-              size="large"
-              :disabled="inputValue.length === 0"
-              @click="sendMessage"
-            >
-              <icon-ep-promotion style="font-size: 24px" />
-            </el-button>
-          </el-tooltip>
+            <icon-ep-promotion style="font-size: 24px" />
+          </button>
         </div>
-      </form>
-      <ImgUpload
-        v-show="showImgUpload"
-        :friend="friend.userId"
-        :session="showChat"
-        :scrollbar="scrollbarRef"
-        :chatBody="chatBodyRef"
-      />
-      <FileUpload
-        v-show="showFileUpload"
-        :friend="friend.userId"
-        :session="showChat"
-        :scrollbar="scrollbarRef"
-        :chatBody="chatBodyRef"
-      />
+      </div>
     </footer>
+    <el-dialog v-model="showImagePreview" title="发送图片" width="30%">
+      <div style="text-align: center">
+        <el-image :src="previewImageUrl" style="max-width: 100%; max-height: 300px" />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelSend">取消</el-button>
+          <el-button type="primary" @click="confirmSendImage">
+            发送
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="showFilePreview" title="发送文件" width="30%">
+      <div style="text-align: center">
+        <p>确定要发送文件: {{ selectedFile ? selectedFile.name : '' }}?</p>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelSend">取消</el-button>
+          <el-button type="primary" @click="confirmSendFile">
+            发送
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
-<script>
+<script setup>
 import {
   computed,
   getCurrentInstance,
   inject,
   nextTick,
   onMounted,
+  onBeforeUnmount,
   reactive,
   ref,
   toRefs,
@@ -344,190 +290,396 @@ import {
   computeMinuteDiff,
   formatDate,
 } from "@/utils/date";
+import { reqSavePictureMsg, reqSaveFileMsg } from "@/api";
 import emoticons from "./emoticons.json";
-import ImgUpload from "@/pages/home/chat/img-upload";
-import FileUpload from "@/pages/home/chat/file-upload";
 
-export default {
-  name: "Chat",
-  components: {
-    ImgUpload,
-    FileUpload,
+const props = defineProps({
+  showChat: String,
+});
+
+const emit = defineEmits(['update:showChat']);
+
+const socket = getCurrentInstance().appContext.config.globalProperties.socket;
+const store = useStore();
+const user = inject("user");
+
+// 从 Vuex store 获取 WebSocket 连接状态
+const isConnected = computed(() => store.state.socket.isConnected);
+
+// 监听连接状态，成功连接后发送在线状态
+watch(isConnected, (newValue) => {
+  if (newValue) {
+    console.log('[Chat] 连接成功，发送在线状态');
+    socket.emit('online', user.userId, 1);
+  }
+}, { immediate: true });
+
+const { showChat } = toRefs(props);
+const chatList = computed(() => store.state.home.chatList);
+const chatHistoryList = computed(() => store.state.home.chatHistories);
+const onlineUsers = computed(() => store.state.home.onlineUsers);
+const friend = reactive({
+  userId: "",
+  avatar: "",
+  remark: "",
+});
+
+watch(
+  () => showChat.value,
+  (val) => {
+    if (val) {
+      let chat = chatList.value.find((chat) => chat.sessionId === val);
+      if (chat) {
+        friend.userId = chat.friendUserId;
+        friend.avatar = chat.friendAvatar;
+        friend.remark = chat.friendRemark ? chat.friendRemark : chat.friendNickName;
+      }
+    }
   },
-  props: {
-    showChat: String,
-  },
-  emits: ["update:showChat"],
-  setup(props) {
-    const socket =
-      getCurrentInstance().appContext.config.globalProperties.socket;
-    const store = useStore();
-    const user = inject("user");
+  {
+    immediate: true,
+  }
+);
 
-    const { showChat } = toRefs(props);
-    const chatList = computed(() => store.state.home.chatList);
-    const chatHistoryList = computed(() => store.state.home.chatHistories);
-    const onlineUsers = computed(() => store.state.home.onlineUsers);
-    const friend = reactive({
-      userId: "",
-      avatar: "",
-      remark: "",
-    });
-    const scrollbarRef = ref();
-    const chatBodyRef = ref();
-    const checkOnline = (userId) => {
-      return onlineUsers.value.indexOf(userId) >= 0;
-    };
-    const getFilename = (filePath) => {
-      let arr = filePath.split("/");
-      let filename = arr[arr.length - 1];
-      return filename.length > 20
-        ? filename.substring(0, 14) +
-            "..." +
-            filename.substring(filename.lastIndexOf(".") - 3)
-        : filename;
-    };
+const scrollbarRef = ref();
+const chatBodyRef = ref();
+const checkOnline = (userId) => {
+  return onlineUsers.value.indexOf(userId) >= 0;
+};
+const getFilename = (filePath) => {
+  let arr = filePath.split("/");
+  let filename = arr[arr.length - 1];
+  return filename.length > 20
+    ? filename.substring(0, 14) +
+        "..." +
+        filename.substring(filename.lastIndexOf(".") - 3)
+    : filename;
+};
 
-    const inputRef = ref();
-    const inputValue = ref("");
-    const focusIndex = ref(0);
-    const setFocusIndex = (event) => {
-      event.target.selectionStart = focusIndex.value;
-      event.target.selectionEnd = focusIndex.value;
-    };
-    const sendMessage = () => {
-      if (inputValue.value) {
-        let lastMessage = chatHistoryList.value.slice(-1)[0];
-        let currentTime = formatDate(new Date(), "YYYY-MM-DD HH:mm:ss");
-        let showTime = 1;
-        if (
-          lastMessage &&
-          computeMinuteDiff(lastMessage.createTime, currentTime) < 5
-        ) {
-          showTime = 0;
+const inputRef = ref();
+const inputValue = ref("");
+const focusIndex = ref(0);
+const setFocusIndex = (event) => {
+  // 确保焦点索引在有效范围内
+  const maxLength = inputValue.value ? inputValue.value.length : 0;
+  focusIndex.value = Math.min(focusIndex.value, maxLength);
+  
+  // 设置光标位置
+  if (event && event.target) {
+    event.target.selectionStart = focusIndex.value;
+    event.target.selectionEnd = focusIndex.value;
+  }
+};
+const sendMessage = async () => {
+  console.log("[Send] 开始发送消息...");
+  const messageText = inputValue.value.trim();
+  
+  // 1. 基础检查
+  if (!messageText || !friend.userId || !showChat.value) {
+    return;
+  }
+
+  // 2. 构建消息对象
+  const currentTime = formatDate(new Date(), "YYYY-MM-DD HH:mm:ss");
+  const lastMessage = chatHistoryList.value.slice(-1)[0];
+  const showTime = lastMessage && 
+    computeMinuteDiff(lastMessage.createTime, currentTime) < 5 ? 0 : 1;
+
+  const message = {
+    senderId: user.userId,
+    receiverId: friend.userId,
+    sessionId: showChat.value,
+    type: 0,  // 文本消息
+    content: messageText,
+    createTime: currentTime,
+    hasRead: 0,
+    showTime: showTime
+  };
+
+  // 3. 保存原始文本以备发送失败时恢复
+  const originalText = inputValue.value;
+  inputValue.value = '';  // 先清空输入框
+
+  try {
+    // 4. 通过 Vuex 发送消息
+    const response = await store.dispatch('socket/sendMessage', { socket, message });
+    
+    if (response) {
+      console.log('[Send] 发送成功，服务器返回:', response);
+      
+      // 5. 更新聊天记录
+      chatHistoryList.value.push(response);
+      
+      // 6. 更新会话列表
+      const chatIndex = chatList.value.findIndex(
+        (chat) => chat.sessionId === response.sessionId
+      );
+      if (chatIndex !== -1) {
+        console.log('[Send] 更新会话列表');
+        chatList.value[chatIndex].createTime = response.createTime;
+        chatList.value[chatIndex].latestChatHistory = response;
+        const chat = chatList.value.splice(chatIndex, 1)[0];
+        chatList.value.unshift(chat);
+      }
+
+      // 7. 滚动到底部
+      nextTick(() => {
+        if (scrollbarRef.value) {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
         }
-        let message = {
-          senderId: user.userId,
-          receiverId: friend.userId,
-          sessionId: showChat.value,
-          type: 0,
-          content: inputValue.value,
-          createTime: currentTime,
-          hasRead: 0,
-          showTime: showTime,
-        };
-        socket.emit("sendMsg", message, (response, msg) => {
-          if (msg === "notFriend") {
-            ElMessage.error({
-              message: "你还不是他（她）的好友",
-              showClose: true,
-            });
-            return;
-          }
-          if (response) {
-            if (msg === "offline") {
-              ElMessage.warning({ message: "对方不在线", showClose: true });
-            }
-            chatHistoryList.value.push(response);
-            nextTick(() => {
-              scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-            });
-            inputValue.value = "";
-            let chatIndex = chatList.value.findIndex(
-              (chat) => chat.sessionId === response.sessionId
-            );
-            chatList.value[chatIndex].createTime = response.createTime;
-            chatList.value[chatIndex].latestChatHistory = response;
-            let delChat = chatList.value.splice(chatIndex, 1)[0];
-            chatList.value.splice(0, 0, delChat);
-          } else {
-            ElMessage.error({ message: "网络异常", showClose: true });
-          }
+      });
+
+      // 8. 获得输入框焦点
+      nextTick(() => {
+        if (inputRef.value) {
+          inputRef.value.focus();
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[Send] 发送失败:', error);
+    inputValue.value = originalText; // 恢复原始文本
+    ElMessage.error(error.message || "发送失败，请重试");
+  }
+};
+
+const addEmoticon = (emoticon) => {
+  let inputContent = inputValue.value || "";
+  inputValue.value =
+    inputContent.slice(0, focusIndex.value) +
+    emoticon +
+    inputContent.slice(focusIndex.value);
+  focusIndex.value += emoticon.length;
+  // 使用nextTick确保DOM更新后再设置焦点
+  nextTick(() => {
+    if (inputRef.value) {
+      inputRef.value.focus();
+      // 手动触发一次输入事件，确保v-model更新
+      const event = new Event("input", { bubbles: true });
+      inputRef.value.$el.querySelector("textarea").dispatchEvent(event);
+    }
+  });
+};
+
+const imageInput = ref(null);
+const fileInput = ref(null);
+const triggerImageUpload = () => {
+  imageInput.value.click();
+};
+
+const triggerFileUpload = () => {
+  fileInput.value.click();
+};
+
+// 在 <script setup> 中添加确认对话框相关的响应式变量
+const showImagePreview = ref(false);
+const showFilePreview = ref(false);
+const selectedFile = ref(null);
+const previewImageUrl = ref('');
+
+// 修改图片上传处理函数
+const handleImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.type !== "image/jpeg" && file.type !== "image/png") {
+    ElMessage.warning("上传的图片仅支持 JPG 或 PNG 格式！");
+    return;
+  }
+  if (file.size / 1024 / 1024 > 2) {
+    ElMessage.warning("上传的图片大小不能超过 2MB！");
+    return;
+  }
+
+  // 显示预览对话框而不是立即上传
+  selectedFile.value = file;
+  previewImageUrl.value = URL.createObjectURL(file);
+  showImagePreview.value = true;
+  
+  // 清空文件输入
+  event.target.value = '';
+};
+
+// 修改文件上传处理函数
+const handleFileUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (file.size / 1024 / 1024 > 30) {
+    ElMessage.warning("上传的文件大小不能超过 30MB！");
+    return;
+  }
+
+  // 显示确认对话框而不是立即上传
+  selectedFile.value = file;
+  showFilePreview.value = true;
+  
+  // 清空文件输入
+  event.target.value = '';
+};
+
+// 确认发送图片
+const confirmSendImage = async () => {
+  if (!selectedFile.value) return;
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile.value);
+  formData.append('senderId', user.userId);
+  formData.append('receiverId', friend.userId);
+  formData.append('sessionId', showChat.value);
+
+  try {
+    showImagePreview.value = false;
+    ElMessage.info('正在上传图片...');
+    
+    const result = await reqSavePictureMsg(formData);
+    if (result.success) {
+      const message = {
+        senderId: user.userId,
+        receiverId: friend.userId,
+        sessionId: showChat.value,
+        type: 1,
+        content: result.data,
+        createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
+        hasRead: 0,
+        showTime: 1,
+      };
+      
+      const response = await store.dispatch('socket/sendMessage', { socket, message });
+      if (response) {
+        chatHistoryList.value.push(response);
+        const chatIndex = chatList.value.findIndex(
+          (chat) => chat.sessionId === response.sessionId
+        );
+        if (chatIndex !== -1) {
+          chatList.value[chatIndex].createTime = response.createTime;
+          chatList.value[chatIndex].latestChatHistory = response;
+          const chat = chatList.value.splice(chatIndex, 1)[0];
+          chatList.value.unshift(chat);
+        }
+        nextTick(() => {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        });
+        ElMessage.success('图片发送成功');
+      }
+    } else {
+      ElMessage.error(result.message || "图片上传失败");
+    }
+  } catch (error) {
+    console.error('图片上传失败:', error);
+    ElMessage.error("图片上传失败，请检查网络连接");
+  } finally {
+    selectedFile.value = null;
+    previewImageUrl.value = '';
+  }
+};
+
+// 确认发送文件
+const confirmSendFile = async () => {
+  if (!selectedFile.value) return;
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile.value);
+  formData.append('senderId', user.userId);
+  formData.append('receiverId', friend.userId);
+  formData.append('sessionId', showChat.value);
+
+  try {
+    showFilePreview.value = false;
+    ElMessage.info('正在上传文件...');
+    
+    const result = await reqSaveFileMsg(formData);
+    if (result.success) {
+      const message = {
+        senderId: user.userId,
+        receiverId: friend.userId,
+        sessionId: showChat.value,
+        type: 2,
+        content: result.data,
+        createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
+        hasRead: 0,
+        showTime: 1,
+      };
+
+      const response = await store.dispatch('socket/sendMessage', { socket, message });
+      if (response) {
+        chatHistoryList.value.push(response);
+        const chatIndex = chatList.value.findIndex(
+          (chat) => chat.sessionId === response.sessionId
+        );
+        if (chatIndex !== -1) {
+          chatList.value[chatIndex].createTime = response.createTime;
+          chatList.value[chatIndex].latestChatHistory = response;
+          const chat = chatList.value.splice(chatIndex, 1)[0];
+          chatList.value.unshift(chat);
+        }
+        nextTick(() => {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        });
+        ElMessage.success('文件发送成功');
+      }
+    } else {
+      ElMessage.error(result.message || "文件上传失败");
+    }
+  } catch (error) {
+    console.error('文件上传失败:', error);
+    ElMessage.error("文件上传失败，请检查网络连接");
+  } finally {
+    selectedFile.value = null;
+  }
+};
+
+// 取消发送
+const cancelSend = () => {
+  showImagePreview.value = false;
+  showFilePreview.value = false;
+  selectedFile.value = null;
+  previewImageUrl.value = '';
+};
+
+onMounted(() => {
+  socket.on("receiveMsg", async (message) => {
+    console.log('[Socket] 收到新消息:', message);
+    
+    // 检查消息格式
+    if (!message || !message.senderId || !message.content) {
+      console.error('[Socket] 消息格式无效:', message);
+      return;
+    }
+
+    // 检查是否是当前聊天窗口的消息
+    if (friend.userId === message.senderId) {
+      chatHistoryList.value.push(message);
+      
+      // 更新会话列表中的最新消息
+      const chatIndex = chatList.value.findIndex(
+        (chat) => chat.sessionId === message.sessionId
+      );
+      if (chatIndex !== -1) {
+        chatList.value[chatIndex].latestChatHistory = message;
+        chatList.value[chatIndex].createTime = message.createTime;
+        const updatedChat = chatList.value.splice(chatIndex, 1)[0];
+        chatList.value.unshift(updatedChat);
+      }
+
+      // 滚动到底部
+      nextTick(() => {
+        if (scrollbarRef.value) {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        }
+      });
+      
+      // 标记消息已读
+      if (message.hasRead === 0) {
+        socket.emit('markMessageRead', {
+          sessionId: message.sessionId,
+          messageId: message.id
         });
       }
-    };
+    }
+  });
+});
 
-    const showEmoticon = ref(false);
-    const addEmoticon = (emoticon) => {
-      showEmoticon.value = false;
-      let inputContent = inputValue.value;
-      inputValue.value =
-        inputContent.slice(0, focusIndex.value) +
-        emoticon +
-        inputContent.slice(focusIndex.value);
-      focusIndex.value += emoticon.length;
-      inputRef.value.focus();
-    };
-
-    const showImgUpload = ref(false);
-    const showFileUpload = ref(false);
-    const uploadImg = () => {
-      showFileUpload.value = false;
-      showImgUpload.value = !showImgUpload.value;
-    };
-    const uploadFile = () => {
-      showImgUpload.value = false;
-      showFileUpload.value = !showFileUpload.value;
-    };
-
-    onMounted(() => {
-      socket.on("receiveMsg", (message) => {
-        if (friend.userId === message.senderId) {
-          chatHistoryList.value.push(message);
-          nextTick(() => {
-            scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-          });
-        }
-      });
-    });
-
-    watch(showChat, () => {
-      if (showChat.value) {
-        let chatInfo = chatList.value.find(
-          (chat) => chat.sessionId === showChat.value
-        );
-        if (chatInfo) {
-          friend.userId = chatInfo.friendUserId;
-          friend.avatar = chatInfo.friendAvatar;
-          friend.remark = chatInfo.friendRemark
-            ? chatInfo.friendRemark
-            : chatInfo.friendNickName;
-        }
-      }
-    });
-    watch(chatHistoryList, () => {
-      nextTick(() => {
-        scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-      });
-    });
-
-    return {
-      user,
-      showChat,
-      chatHistoryList,
-      friend,
-      scrollbarRef,
-      chatBodyRef,
-      checkOnline,
-      getFilename,
-      compareYear,
-      compareDate,
-      formatDate,
-      inputRef,
-      inputValue,
-      focusIndex,
-      sendMessage,
-      setFocusIndex,
-      showEmoticon,
-      emoticons,
-      addEmoticon,
-      showImgUpload,
-      showFileUpload,
-      uploadImg,
-      uploadFile,
-    };
-  },
-};
 </script>
 
 <style scoped>
@@ -720,21 +872,43 @@ export default {
   color: var(--color-primary-light);
 }
 .chat footer {
+  position: relative;
   background-color: var(--bg-color);
   padding: 20px 30px;
   padding-bottom: 50px;
 }
-.chat footer form {
+.chat footer .input-area {
+  position: relative;
+  z-index: 10;
   display: flex;
   align-items: center;
+  background-color: var(--bg-color);
 }
-.chat footer form .buttons {
+.chat footer .input-area .buttons {
   display: flex;
   margin-left: 20px;
 }
-.chat footer form .buttons .send {
+.chat footer .input-area .buttons .send {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
   width: 80px;
+  height: 40px;
   margin-left: 20px;
+  background-color: var(--el-color-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+.chat footer .input-area .buttons .send:hover:not(:disabled) {
+  background-color: var(--el-color-primary-light-3);
+}
+.chat footer .input-area .buttons .send:disabled {
+  background-color: var(--el-color-primary-light-5);
+  cursor: not-allowed;
 }
 .emoticons {
   height: 100px;
@@ -747,5 +921,33 @@ export default {
 }
 .emoticon-item span {
   font-size: 20px;
+}
+.emoticon-btn {
+  font-size: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.emoticon-popover {
+  min-width: 200px;
+  min-height: 40px;
+  /* 其他样式 */
+}
+
+/* 添加连接状态样式 */
+.connection-status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--el-color-success-light-8);
+  color: var(--el-color-success);
+}
+
+.connection-status.disconnected {
+  background: var(--el-color-danger-light-8);
+  color: var(--el-color-danger);
 }
 </style>
