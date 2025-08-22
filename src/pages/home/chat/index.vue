@@ -1,120 +1,73 @@
 <template>
   <div class="chat">
+    <!-- Header -->
     <header>
-      <!-- 添加连接状态指示器 -->
-  <div class="connection-status" :class="{ disconnected: !isConnected }">
-    {{ isConnected ? '已连接' : '未连接' }}
-  </div>
-  <div class="header-user">
+      <div class="connection-status" :class="{ disconnected: !isConnected }">
+        {{ isConnected ? '已连接' : '未连接' }}
+      </div>
+      <div class="header-user">
         <figure>
-          <el-avatar
-            :src="
-              friend.avatar
-                ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
-                : ''
-            "
-            size="large"
-            shape="square"
-            @error="() => true"
-          >
-            <img
-              src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
-            />
+          <el-avatar :src="chatInfo.avatar" size="large" shape="square" @error="() => true">
+            <img v-if="!isGroupChat" src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png" />
+            <icon-mdi-account-group v-else style="font-size: 30px" />
           </el-avatar>
         </figure>
         <div>
-          <p>{{ friend.remark }}</p>
-          <small v-if="checkOnline(friend.userId)" class="success">
+          <p>{{ chatInfo.name }}</p>
+          <small v-if="!isGroupChat && checkOnline(chatInfo.id)" class="success">
             <icon-mdi-circle style="font-size: 12px" />
             <span>在 线</span>
           </small>
-          <small v-else class="info">
+          <small v-else-if="!isGroupChat" class="info">
             <icon-mdi-circle style="font-size: 12px" />
             <span>离 线</span>
+          </small>
+          <small v-else class="info">
+            <icon-mdi-account-group style="font-size: 12px" />
+            <span>{{ currentGroup.members?.length || 0 }} 位成员</span>
           </small>
         </div>
       </div>
       <div class="header-action">
-        <el-button type="success" size="large" text title="语音通话（敬请期待）">
-          <icon-ep-phone style="font-size: 26px" />
-        </el-button>
-        <el-button type="warning" size="large" text title="视频通话（敬请期待）">
-          <icon-ep-video-camera style="font-size: 26px" />
-        </el-button>
-        <el-button
-          type="danger"
-          size="large"
-          text
-          title="关闭窗口"
-          @click="emit('update:showChat', '')"
-        >
+        <el-button type="danger" size="large" text title="关闭窗口" @click="emit('update:showChat', null)">
           <icon-ep-close style="font-size: 26px" />
         </el-button>
       </div>
     </header>
-    <el-scrollbar ref="scrollbarRef">
+
+    <!-- Message Body -->
+    <el-scrollbar ref="scrollbarRef" class="chat-scrollbar">
       <div class="chat-body" ref="chatBodyRef">
-        <div class="messages" v-if="chatHistoryList.length > 0">
+        <div class="messages" v-if="messageList.length > 0">
           <div
             class="message-item"
-            v-for="message in chatHistoryList"
-            :key="message.id"
+            v-for="message in messageList"
+            :key="message.id || message.messageId"
             :class="{ send: message.senderId === user.userId }"
           >
+            <!-- Time Divider -->
             <div
               v-if="message.showTime === 1"
               class="divider"
-              :label="
-                compareDate(message.createTime)
-                  ? formatDate(message.createTime, 'ah:mm')
-                  : compareDate(message.createTime, 1)
-                  ? '昨天 ' + formatDate(message.createTime, 'ah:mm')
-                  : compareDate(message.createTime, 2)
-                  ? '前天 ' + formatDate(message.createTime, 'ah:mm')
-                  : compareYear(message.createTime)
-                  ? formatDate(message.createTime, 'MM-DD ah:mm')
-                  : formatDate(message.createTime, 'YYYY-MM-DD ah:mm')
-              "
+              :label="formatMessageTime(message.createTime || message.sentAt)"
             />
+            <!-- Message Content -->
             <div class="message">
-              <div v-if="message.senderId === user.userId" class="header">
-                <div>
-                  <span>{{ user.nickName }}</span>
-                  <small>
-                    {{ formatDate(message.createTime, "YYYY-MM-DD HH:mm") }}
-                  </small>
-                </div>
-                <el-avatar :src="user.avatar" :size="45" @error="() => true">
-                  <img
-                    src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
-                  />
+              <div class="header">
+                <el-avatar :src="getSender(message.senderId).avatar" :size="45" @error="() => true">
+                  <img src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png" />
                 </el-avatar>
-              </div>
-              <div v-else class="header">
-                <el-avatar
-                  :src="
-                    friend.avatar
-                      ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
-                      : ''
-                  "
-                  :size="45"
-                  @error="() => true"
-                >
-                  <img
-                    src="https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711png.png"
-                  />
-                </el-avatar>
-                <div>
-                  <span>{{ friend.remark }}</span>
-                  <small>
-                    {{ formatDate(message.createTime, "YYYY-MM-DD HH:mm") }}
-                  </small>
+                <div :class="{ 'sender-info-right': message.senderId === user.userId }">
+                  <span>{{ getSender(message.senderId).name }}</span>
+                  <small>{{ formatDate(message.createTime || message.sentAt, "YYYY-MM-DD HH:mm") }}</small>
                 </div>
               </div>
-              <div v-if="message.type === 0" class="content">
+              <!-- Text Message -->
+              <div v-if="message.type === 0 || message.messageType === 'text'" class="content">
                 {{ message.content }}
               </div>
-              <div v-if="message.type === 1" class="content-image">
+              <!-- Image Message -->
+              <div v-if="message.type === 1 || message.messageType === 'image'" class="content-image">
                 <el-image
                   v-if="message.content"
                   class="image"
@@ -136,7 +89,8 @@
                   </template>
                 </el-image>
               </div>
-              <div v-if="message.type === 2" class="content-file">
+              <!-- File Message -->
+              <div v-if="message.type === 2 || message.messageType === 'file'" class="content-file">
                 <div class="file">
                   <div class="file-icon">
                     <icon-mdi-file />
@@ -168,6 +122,8 @@
         </div>
       </div>
     </el-scrollbar>
+
+    <!-- Footer -->
     <footer>
       <div class="input-area">
         <el-input
@@ -225,16 +181,7 @@
             style="display: none"
             @change="handleFileUpload"
           />
-          <el-button type="info" size="large" link title="语音（暂不支持）">
-            <icon-ep-microphone style="font-size: 26px" />
-          </el-button>
-          <button
-            class="send"
-            type="button"
-            title="发送"
-            :disabled="inputValue.length === 0"
-            @click="sendMessage"
-          >
+          <button class="send" type="button" title="发送" :disabled="inputValue.length === 0" @click="sendMessage">
             <icon-ep-promotion style="font-size: 24px" />
           </button>
         </div>
@@ -270,83 +217,115 @@
 </template>
 
 <script setup>
-import {
-  computed,
-  getCurrentInstance,
-  inject,
-  nextTick,
-  onMounted,
-  onBeforeUnmount,
-  reactive,
-  ref,
-  toRefs,
-  watch,
-} from "vue";
+import { computed, getCurrentInstance, inject, nextTick, onMounted, onBeforeUnmount, reactive, ref, toRefs, watch } from "vue";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
-import {
-  compareYear,
-  compareDate,
-  computeMinuteDiff,
-  formatDate,
-} from "@/utils/date";
-import { reqSavePictureMsg, reqSaveFileMsg } from "@/api";
+import { compareYear, compareDate, computeMinuteDiff, formatDate } from "@/utils/date";
+import { reqSavePictureMsg, reqSaveFileMsg, reqSendGroupImage, reqSendGroupFile, reqSendGroupTextMessage } from "@/api";
 import emoticons from "./emoticons.json";
 
 const props = defineProps({
-  showChat: String,
+  showChat: Object, // { type: 'friend' | 'group', id: String }
 });
-
 const emit = defineEmits(['update:showChat']);
 
 const socket = getCurrentInstance().appContext.config.globalProperties.socket;
 const store = useStore();
 const user = inject("user");
 
-// 从 Vuex store 获取 WebSocket 连接状态
-const isConnected = computed(() => store.state.socket.isConnected);
-
-// 监听连接状态，成功连接后发送在线状态
-watch(isConnected, (newValue) => {
-  if (newValue) {
-    console.log('[Chat] 连接成功，发送在线状态');
-    socket.emit('online', user.userId, 1);
-  }
-}, { immediate: true });
-
 const { showChat } = toRefs(props);
+
+// --- Computed Properties for Dynamic Chat Handling ---
+
+const isConnected = computed(() => store.state.socket.isConnected);
+const isGroupChat = computed(() => showChat.value?.type === 'group');
+const chatSessionId = computed(() => showChat.value?.id);
+
+// Friend-specific state
 const chatList = computed(() => store.state.home.chatList);
-const chatHistoryList = computed(() => store.state.home.chatHistories);
 const onlineUsers = computed(() => store.state.home.onlineUsers);
-const friend = reactive({
-  userId: "",
-  avatar: "",
-  remark: "",
+
+// Group-specific state
+const currentGroup = computed(() => store.getters["groups/currentGroup"]);
+
+// Combined state
+const messageList = computed(() => {
+  if (isGroupChat.value) {
+    if (!chatSessionId.value) return [];
+    const getMsgs = store.getters["groups/getGroupMessages"];
+    return typeof getMsgs === 'function' ? (getMsgs(chatSessionId.value) || []) : [];
+  }
+  return store.state.home.chatHistories || [];
 });
 
-watch(
-  () => showChat.value,
-  (val) => {
-    if (val) {
-      let chat = chatList.value.find((chat) => chat.sessionId === val);
-      if (chat) {
-        friend.userId = chat.friendUserId;
-        friend.avatar = chat.friendAvatar;
-        friend.remark = chat.friendRemark ? chat.friendRemark : chat.friendNickName;
-      }
-    }
-  },
-  {
-    immediate: true,
+const chatInfo = computed(() => {
+  if (!chatSessionId.value) return { id: '', name: '', avatar: '' };
+  if (isGroupChat.value) {
+    const group = currentGroup.value;
+    return {
+      id: group?.groupId ?? chatSessionId.value,
+      name: group?.groupName ?? '',
+      avatar: group?.avatar ?? ''
+    };
+  } else {
+    const chat = chatList.value.find(c => c.sessionId === chatSessionId.value);
+    return chat ? {
+      id: chat.friendUserId,
+      name: chat.friendRemark || chat.friendNickName,
+      avatar: chat.friendAvatar,
+    } : { name: '私聊', avatar: '' };
   }
-);
+});
+
+// --- UI & Interaction ---
 
 const scrollbarRef = ref();
 const chatBodyRef = ref();
-const checkOnline = (userId) => {
-  return onlineUsers.value.indexOf(userId) >= 0;
+const inputRef = ref();
+const inputValue = ref("");
+const focusIndex = ref(0);
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (scrollbarRef.value) {
+      scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+    }
+  });
 };
+
+// --- Watcher for Handling Chat Switch ---
+
+watch(chatSessionId, async (newId) => {
+  if (!newId) return;
+  
+  if (isGroupChat.value) {
+    await store.dispatch('groups/fetchGroupMessages', {
+      groupId: newId,
+      params: { page: 1, size: 20 }
+    });
+    await store.dispatch('groups/fetchGroupInfo', newId);
+    scrollToBottom();
+  } else {
+    const paramsForHistory = {
+      id: String(user.userId),
+      session: String(newId),
+      page: 1,
+      size: 15,
+    };
+    await store.dispatch("home/getHistory", paramsForHistory);
+  }
+});
+
+// --- Emoticon, Image, and File Handling ---
+const imageInput = ref(null);
+const fileInput = ref(null);
+const showImagePreview = ref(false);
+const showFilePreview = ref(false);
+const selectedFile = ref(null);
+const previewImageUrl = ref('');
+
 const getFilename = (filePath) => {
+  if (!filePath) return '';
   let arr = filePath.split("/");
   let filename = arr[arr.length - 1];
   return filename.length > 20
@@ -356,91 +335,9 @@ const getFilename = (filePath) => {
     : filename;
 };
 
-const inputRef = ref();
-const inputValue = ref("");
-const focusIndex = ref(0);
 const setFocusIndex = (event) => {
-  // 确保焦点索引在有效范围内
   const maxLength = inputValue.value ? inputValue.value.length : 0;
-  focusIndex.value = Math.min(focusIndex.value, maxLength);
-  
-  // 设置光标位置
-  if (event && event.target) {
-    event.target.selectionStart = focusIndex.value;
-    event.target.selectionEnd = focusIndex.value;
-  }
-};
-const sendMessage = async () => {
-  console.log("[Send] 开始发送消息...");
-  const messageText = inputValue.value.trim();
-  
-  // 1. 基础检查
-  if (!messageText || !friend.userId || !showChat.value) {
-    return;
-  }
-
-  // 2. 构建消息对象
-  const currentTime = formatDate(new Date(), "YYYY-MM-DD HH:mm:ss");
-  const lastMessage = chatHistoryList.value.slice(-1)[0];
-  const showTime = lastMessage && 
-    computeMinuteDiff(lastMessage.createTime, currentTime) < 5 ? 0 : 1;
-
-  const message = {
-    senderId: user.userId,
-    receiverId: friend.userId,
-    sessionId: showChat.value,
-    type: 0,  // 文本消息
-    content: messageText,
-    createTime: currentTime,
-    hasRead: 0,
-    showTime: showTime
-  };
-
-  // 3. 保存原始文本以备发送失败时恢复
-  const originalText = inputValue.value;
-  inputValue.value = '';  // 先清空输入框
-
-  try {
-    // 4. 通过 Vuex 发送消息
-    const response = await store.dispatch('socket/sendMessage', { socket, message });
-    
-    if (response) {
-      console.log('[Send] 发送成功，服务器返回:', response);
-      
-      // 5. 更新聊天记录
-      chatHistoryList.value.push(response);
-      
-      // 6. 更新会话列表
-      const chatIndex = chatList.value.findIndex(
-        (chat) => chat.sessionId === response.sessionId
-      );
-      if (chatIndex !== -1) {
-        console.log('[Send] 更新会话列表');
-        chatList.value[chatIndex].createTime = response.createTime;
-        chatList.value[chatIndex].latestChatHistory = response;
-        const chat = chatList.value.splice(chatIndex, 1)[0];
-        chatList.value.unshift(chat);
-      }
-
-      // 7. 滚动到底部
-      nextTick(() => {
-        if (scrollbarRef.value) {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-        }
-      });
-
-      // 8. 获得输入框焦点
-      nextTick(() => {
-        if (inputRef.value) {
-          inputRef.value.focus();
-        }
-      });
-    }
-  } catch (error) {
-    console.error('[Send] 发送失败:', error);
-    inputValue.value = originalText; // 恢复原始文本
-    ElMessage.error(error.message || "发送失败，请重试");
-  }
+  focusIndex.value = Math.min(event.target.selectionStart, maxLength);
 };
 
 const addEmoticon = (emoticon) => {
@@ -450,186 +347,40 @@ const addEmoticon = (emoticon) => {
     emoticon +
     inputContent.slice(focusIndex.value);
   focusIndex.value += emoticon.length;
-  // 使用nextTick确保DOM更新后再设置焦点
   nextTick(() => {
-    if (inputRef.value) {
-      inputRef.value.focus();
-      // 手动触发一次输入事件，确保v-model更新
-      const event = new Event("input", { bubbles: true });
-      inputRef.value.$el.querySelector("textarea").dispatchEvent(event);
-    }
+    inputRef.value?.focus();
   });
 };
 
-const imageInput = ref(null);
-const fileInput = ref(null);
-const triggerImageUpload = () => {
-  imageInput.value.click();
-};
+const triggerImageUpload = () => imageInput.value.click();
+const triggerFileUpload = () => fileInput.value.click();
 
-const triggerFileUpload = () => {
-  fileInput.value.click();
-};
-
-// 在 <script setup> 中添加确认对话框相关的响应式变量
-const showImagePreview = ref(false);
-const showFilePreview = ref(false);
-const selectedFile = ref(null);
-const previewImageUrl = ref('');
-
-// 修改图片上传处理函数
-const handleImageUpload = async (event) => {
+const handleImageUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
   if (file.type !== "image/jpeg" && file.type !== "image/png") {
-    ElMessage.warning("上传的图片仅支持 JPG 或 PNG 格式！");
-    return;
+    return ElMessage.warning("上传的图片仅支持 JPG 或 PNG 格式！");
   }
   if (file.size / 1024 / 1024 > 2) {
-    ElMessage.warning("上传的图片大小不能超过 2MB！");
-    return;
+    return ElMessage.warning("上传的图片大小不能超过 2MB！");
   }
-
-  // 显示预览对话框而不是立即上传
   selectedFile.value = file;
   previewImageUrl.value = URL.createObjectURL(file);
   showImagePreview.value = true;
-  
-  // 清空文件输入
   event.target.value = '';
 };
 
-// 修改文件上传处理函数
-const handleFileUpload = async (event) => {
+const handleFileUpload = (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
   if (file.size / 1024 / 1024 > 30) {
-    ElMessage.warning("上传的文件大小不能超过 30MB！");
-    return;
+    return ElMessage.warning("上传的文件大小不能超过 30MB！");
   }
-
-  // 显示确认对话框而不是立即上传
   selectedFile.value = file;
   showFilePreview.value = true;
-  
-  // 清空文件输入
   event.target.value = '';
 };
 
-// 确认发送图片
-const confirmSendImage = async () => {
-  if (!selectedFile.value) return;
-  
-  const formData = new FormData();
-  formData.append('file', selectedFile.value);
-  formData.append('senderId', user.userId);
-  formData.append('receiverId', friend.userId);
-  formData.append('sessionId', showChat.value);
-
-  try {
-    showImagePreview.value = false;
-    ElMessage.info('正在上传图片...');
-    
-    const result = await reqSavePictureMsg(formData);
-    if (result.success) {
-      const message = {
-        senderId: user.userId,
-        receiverId: friend.userId,
-        sessionId: showChat.value,
-        type: 1,
-        content: result.data,
-        createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
-        hasRead: 0,
-        showTime: 1,
-      };
-      
-      const response = await store.dispatch('socket/sendMessage', { socket, message });
-      if (response) {
-        chatHistoryList.value.push(response);
-        const chatIndex = chatList.value.findIndex(
-          (chat) => chat.sessionId === response.sessionId
-        );
-        if (chatIndex !== -1) {
-          chatList.value[chatIndex].createTime = response.createTime;
-          chatList.value[chatIndex].latestChatHistory = response;
-          const chat = chatList.value.splice(chatIndex, 1)[0];
-          chatList.value.unshift(chat);
-        }
-        nextTick(() => {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-        });
-        ElMessage.success('图片发送成功');
-      }
-    } else {
-      ElMessage.error(result.message || "图片上传失败");
-    }
-  } catch (error) {
-    console.error('图片上传失败:', error);
-    ElMessage.error("图片上传失败，请检查网络连接");
-  } finally {
-    selectedFile.value = null;
-    previewImageUrl.value = '';
-  }
-};
-
-// 确认发送文件
-const confirmSendFile = async () => {
-  if (!selectedFile.value) return;
-  
-  const formData = new FormData();
-  formData.append('file', selectedFile.value);
-  formData.append('senderId', user.userId);
-  formData.append('receiverId', friend.userId);
-  formData.append('sessionId', showChat.value);
-
-  try {
-    showFilePreview.value = false;
-    ElMessage.info('正在上传文件...');
-    
-    const result = await reqSaveFileMsg(formData);
-    if (result.success) {
-      const message = {
-        senderId: user.userId,
-        receiverId: friend.userId,
-        sessionId: showChat.value,
-        type: 2,
-        content: result.data,
-        createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
-        hasRead: 0,
-        showTime: 1,
-      };
-
-      const response = await store.dispatch('socket/sendMessage', { socket, message });
-      if (response) {
-        chatHistoryList.value.push(response);
-        const chatIndex = chatList.value.findIndex(
-          (chat) => chat.sessionId === response.sessionId
-        );
-        if (chatIndex !== -1) {
-          chatList.value[chatIndex].createTime = response.createTime;
-          chatList.value[chatIndex].latestChatHistory = response;
-          const chat = chatList.value.splice(chatIndex, 1)[0];
-          chatList.value.unshift(chat);
-        }
-        nextTick(() => {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-        });
-        ElMessage.success('文件发送成功');
-      }
-    } else {
-      ElMessage.error(result.message || "文件上传失败");
-    }
-  } catch (error) {
-    console.error('文件上传失败:', error);
-    ElMessage.error("文件上传失败，请检查网络连接");
-  } finally {
-    selectedFile.value = null;
-  }
-};
-
-// 取消发送
 const cancelSend = () => {
   showImagePreview.value = false;
   showFilePreview.value = false;
@@ -637,47 +388,220 @@ const cancelSend = () => {
   previewImageUrl.value = '';
 };
 
-onMounted(() => {
-  socket.on("receiveMsg", async (message) => {
-    console.log('[Socket] 收到新消息:', message);
-    
-    // 检查消息格式
-    if (!message || !message.senderId || !message.content) {
-      console.error('[Socket] 消息格式无效:', message);
-      return;
+const confirmSendImage = async () => {
+  if (!selectedFile.value) return;
+
+  const formData = new FormData();
+  formData.append('file', selectedFile.value);
+
+  try {
+    showImagePreview.value = false;
+    ElMessage.info('正在上传图片...');
+
+    let result;
+    if (isGroupChat.value) {
+      formData.append('groupId', chatSessionId.value);
+      result = await reqSendGroupImage(formData);
+    } else {
+      formData.append('senderId', user.userId);
+      formData.append('receiverId', chatInfo.value.id);
+      formData.append('sessionId', chatSessionId.value);
+      result = await reqSavePictureMsg(formData);
     }
 
-    // 检查是否是当前聊天窗口的消息
-    if (friend.userId === message.senderId) {
-      chatHistoryList.value.push(message);
-      
-      // 更新会话列表中的最新消息
-      const chatIndex = chatList.value.findIndex(
-        (chat) => chat.sessionId === message.sessionId
-      );
-      if (chatIndex !== -1) {
-        chatList.value[chatIndex].latestChatHistory = message;
-        chatList.value[chatIndex].createTime = message.createTime;
-        const updatedChat = chatList.value.splice(chatIndex, 1)[0];
-        chatList.value.unshift(updatedChat);
+    if (result.success) {
+      ElMessage.success('图片发送成功');
+      if (isGroupChat.value) {
+        await store.dispatch('groups/fetchGroupMessages', { groupId: chatSessionId.value });
+        scrollToBottom();
+      } else {
+        const message = {
+          senderId: user.userId,
+          receiverId: chatInfo.value.id,
+          sessionId: chatSessionId.value,
+          type: 1,
+          content: result.data,
+          createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
+          hasRead: 0,
+          showTime: 1,
+        };
+        await store.dispatch('socket/sendMessage', { socket, message });
+        scrollToBottom();
       }
+    } else {
+      ElMessage.error(result.message || "图片上传失败");
+    }
+  } catch (error) {
+    ElMessage.error("图片上传失败，请检查网络连接或后端服务");
+  } finally {
+    selectedFile.value = null;
+    previewImageUrl.value = '';
+  }
+};
 
-      // 滚动到底部
-      nextTick(() => {
-        if (scrollbarRef.value) {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-        }
-      });
-      
-      // 标记消息已读
-      if (message.hasRead === 0) {
-        socket.emit('markMessageRead', {
-          sessionId: message.sessionId,
-          messageId: message.id
-        });
+const confirmSendFile = async () => {
+  if (!selectedFile.value) return;
+
+  const formData = new FormData();
+  formData.append('file', selectedFile.value);
+
+  try {
+    showFilePreview.value = false;
+    ElMessage.info('正在上传文件...');
+
+    let result;
+    if (isGroupChat.value) {
+      formData.append('groupId', chatSessionId.value);
+      result = await reqSendGroupFile(formData);
+    } else {
+      formData.append('senderId', user.userId);
+      formData.append('receiverId', chatInfo.value.id);
+      formData.append('sessionId', chatSessionId.value);
+      result = await reqSaveFileMsg(formData);
+    }
+
+    if (result.success) {
+      ElMessage.success('文件发送成功');
+      if (isGroupChat.value) {
+        await store.dispatch('groups/fetchGroupMessages', { groupId: chatSessionId.value });
+        scrollToBottom();
+      } else {
+        const message = {
+          senderId: user.userId,
+          receiverId: chatInfo.value.id,
+          sessionId: chatSessionId.value,
+          type: 2,
+          content: result.data,
+          createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
+          hasRead: 0,
+          showTime: 1,
+        };
+        await store.dispatch('socket/sendMessage', { socket, message });
+        scrollToBottom();
       }
+    } else {
+      ElMessage.error(result.message || "文件上传失败");
+    }
+  } catch (error) {
+    ElMessage.error("文件上传失败，请检查网络连接或后端服务");
+  } finally {
+    selectedFile.value = null;
+  }
+};
+
+
+const checkOnline = (userId) => onlineUsers.value.includes(userId);
+
+const getSender = (senderId) => {
+  if (senderId === user.userId) {
+    return { name: user.nickName, avatar: user.avatar };
+  }
+  if (isGroupChat.value) {
+    const member = store.getters['groups/getGroupMember'](senderId);
+    return {
+      name: member?.nickName || '成员',
+      avatar: member?.avatar,
+    };
+  } else {
+    return { name: chatInfo.value.name, avatar: chatInfo.value.avatar };
+  }
+};
+
+const formatMessageTime = (timeStr) => {
+  if (!timeStr) return '';
+  if (compareDate(timeStr)) return formatDate(timeStr, 'ah:mm');
+  if (compareDate(timeStr, 1)) return '昨天 ' + formatDate(timeStr, 'ah:mm');
+  if (compareYear(timeStr)) return formatDate(timeStr, 'MM-DD ah:mm');
+  return formatDate(timeStr, 'YYYY-MM-DD ah:mm');
+};
+
+// --- Message Sending ---
+
+const sendMessage = async () => {
+  const messageText = inputValue.value.trim();
+  if (!messageText || !chatSessionId.value) return;
+
+  const originalText = inputValue.value;
+  inputValue.value = '';
+  
+  if (isGroupChat.value) {
+    try {
+      const result = await reqSendGroupTextMessage({
+        groupId: chatSessionId.value,
+        content: messageText,
+        messageType: 'text',
+      });
+      if (result.success) {
+        // Also emit via socket to notify other users in real-time
+        socket.emit('send_group_message', {
+          groupId: chatSessionId.value,
+          content: messageText,
+          messageType: 'text',
+        });
+        // Refetch messages to show the new message for the sender
+        await store.dispatch('groups/fetchGroupMessages', { groupId: chatSessionId.value });
+        scrollToBottom();
+      } else {
+        ElMessage.error(result.message || '消息发送失败');
+        inputValue.value = originalText; // Restore input on failure
+      }
+    } catch (error) {
+      ElMessage.error('消息发送失败，请检查网络');
+      inputValue.value = originalText; // Restore input on failure
+    }
+  } else {
+    // Private chat logic remains the same (optimistic UI with WebSocket)
+    const currentTime = new Date();
+    const lastMessage = messageList.value.slice(-1)[0];
+    const showTime = !lastMessage || computeMinuteDiff(lastMessage.createTime || lastMessage.sentAt, currentTime) >= 5 ? 1 : 0;
+    const tempMessage = {
+      id: `temp_${Date.now()}`,
+      senderId: user.userId,
+      receiverId: chatInfo.value.id,
+      sessionId: chatSessionId.value,
+      type: 0,
+      content: messageText,
+      createTime: formatDate(currentTime, "YYYY-MM-DD HH:mm:ss"),
+      hasRead: 0,
+      showTime: showTime,
+    };
+    store.commit('home/ADD_CHAT_HISTORY', tempMessage);
+    scrollToBottom();
+
+    store.dispatch('socket/sendMessage', { socket, message: tempMessage })
+      .catch(error => {
+        console.error('[Send] 发送失败:', error);
+        ElMessage.error(error.message || "发送失败，请重试");
+        inputValue.value = originalText; // Restore input on failure
+      });
+  }
+
+  nextTick(() => inputRef.value?.focus());
+};
+
+// --- WebSocket Event Listeners ---
+
+onMounted(() => {
+  socket.on("receiveMsg", (message) => {
+    if (showChat.value?.type === 'friend' && message.sessionId === chatSessionId.value) {
+      scrollToBottom();
     }
   });
+
+  socket.on("receive_group_message", (message) => {
+    if (isGroupChat.value && message.groupId === chatSessionId.value) {
+      const exists = messageList.value.some(m => m.messageId === message.messageId);
+      if (!exists) {
+        store.dispatch('groups/addNewGroupMessage', message);
+      }
+      scrollToBottom();
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  socket.off("receiveMsg");
+  socket.off("receive_group_message");
 });
 
 </script>
@@ -701,240 +625,158 @@ onMounted(() => {
 }
 .header-user {
   display: flex;
+  align-items: center;
   height: 65px;
 }
 .header-user figure {
-  margin: 5px 15px 0 0;
+  margin: 0 15px 0 0;
 }
 .header-user p {
   font-size: 26px;
   font-weight: 600;
-  margin-top: 0;
-  margin-bottom: 0;
+  margin: 0;
 }
 .header-user small {
   display: flex;
   align-items: center;
   font-size: 14px;
 }
-.header-user small.success {
-  color: var(--color-success);
-}
-.header-user small.info {
-  color: var(--color-info);
-}
-.header-user small span {
+.header-user small.success { color: var(--color-success); }
+.header-user small.info { color: var(--color-info); }
+.header-user small span, .header-user small .icon-mdi-account-group {
   margin-left: 4px;
-  margin-bottom: 1px;
+}
+.chat-scrollbar {
+  flex: 1;
 }
 .chat-body {
   padding: 30px;
   padding-bottom: 10px;
-  overflow: hidden;
-  flex: 1;
 }
-.chat-body .messages {
+.messages {
   display: flex;
   flex-flow: column nowrap;
 }
-.chat-body .messages .message-item {
+.message-item {
   display: flex;
   width: 100%;
   flex-flow: column nowrap;
   align-items: flex-start;
   margin-bottom: 20px;
 }
-.chat-body .messages .message-item.send {
+.message-item.send {
   align-items: flex-end;
 }
-.chat-body .messages .message-item .divider {
+.divider {
   position: relative;
   width: 100%;
   margin-bottom: 10px;
+  text-align: center;
 }
-.chat-body .messages .message-item .divider::before {
+.divider::before {
   content: attr(label);
-  display: block;
-  position: absolute;
-  top: -8px;
-  letter-spacing: 0.5px;
+  display: inline-block;
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 3px;
   background-color: var(--color-info-light-8);
   color: var(--text-color-regular);
-  left: 50%;
-  transform: translateX(-50%);
 }
-.chat-body .messages .message-item .message {
+.message {
   display: flex;
   max-width: 60%;
   flex-flow: column nowrap;
   align-items: flex-start;
 }
-.chat-body .messages .message-item.send .message {
-  display: flex;
-  max-width: 60%;
-  flex-flow: column nowrap;
+.message-item.send .message {
   align-items: flex-end;
 }
-.chat-body .messages .message-item .message .header {
+.message .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 5px;
 }
-.chat-body .messages .message-item .message .header div {
+.message .header .el-avatar {
+  order: 1;
+}
+.message .header div {
   display: flex;
   flex-flow: column nowrap;
   margin-left: 10px;
+  order: 2;
 }
-.chat-body .messages .message-item.send .message .header div {
-  display: flex;
-  flex-flow: column nowrap;
-  align-items: flex-end;
+.message-item.send .message .header .el-avatar {
+  order: 2;
+}
+.message-item.send .message .header div {
+  margin-left: 0;
   margin-right: 10px;
+  order: 1;
+  align-items: flex-end;
 }
-.chat-body .messages .message-item .message .header div span {
-  font-size: 18px;
-  font-weight: 600;
+.message .header div span {
+  font-size: 16px;
   color: var(--text-color-primary);
+  margin-bottom: 2px;
 }
-.chat-body .messages .message-item .message .header div small {
+.message .header div small {
   font-style: italic;
   color: var(--text-color-secondary);
+  font-size: 12px;
 }
-.chat-body .messages .message-item .message .content {
+.content {
   white-space: pre-wrap;
   font-size: 15px;
   background-color: var(--color-info-light-8);
   border-radius: 7px;
-  margin-left: 50px;
   padding: 10px 15px;
+  margin-left: 55px;
 }
-.chat-body .messages .message-item.send .message .content {
+.message-item.send .content {
   background-color: var(--color-primary);
   color: var(--bg-color);
   margin-left: 0;
-  margin-right: 50px;
+  margin-right: 55px;
 }
-.chat-body .messages .message-item .message .content-image {
-  display: block;
-  min-width: 120px;
-  max-width: 30%;
-  margin-left: 45px;
+.content-image, .content-file {
+  margin-left: 55px;
 }
-.chat-body .messages .message-item.send .message .content-image {
-  justify-content: flex-end;
+.message-item.send .content-image, .message-item.send .content-file {
   margin-left: 0;
-  margin-right: 45px;
+  margin-right: 55px;
 }
-.content-image .image {
-  border-radius: 6px;
-}
-.chat-body .messages .message-item .message .content-file {
-  display: block;
-  height: 100px;
-  width: 300px;
-  background-color: var(--color-info-light-8);
-  border-radius: 10px;
-  margin-left: 45px;
-}
-.chat-body .messages .message-item.send .message .content-file {
-  margin-left: 0;
-  margin-right: 45px;
-}
-.content-file .file {
-  display: flex;
-  height: 100%;
-  padding: 10px 15px;
-}
-.content-file .file .file-icon {
-  display: flex;
-  align-items: center;
-  font-size: 60px;
-}
-.content-file .file .file-info {
-  display: flex;
-  flex-flow: column wrap;
-  justify-content: space-around;
-  margin-left: 5px;
-}
-.content-file .file .file-info .filename {
-  color: var(--text-color-regular);
-  font-size: 16px;
-}
-.content-file .file .file-info .options .download {
-  color: var(--color-primary);
-  font-size: 16px;
-  text-decoration: none;
-}
-.content-file .file .file-info .options .download:hover {
-  color: var(--color-primary-light);
-}
-.chat footer {
+footer {
   position: relative;
   background-color: var(--bg-color);
   padding: 20px 30px;
-  padding-bottom: 50px;
 }
-.chat footer .input-area {
-  position: relative;
-  z-index: 10;
+.input-area {
   display: flex;
   align-items: center;
-  background-color: var(--bg-color);
 }
-.chat footer .input-area .buttons {
-  display: flex;
+.input-area .buttons {
   margin-left: 20px;
 }
-.chat footer .input-area .buttons .send {
+.buttons .send {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   width: 80px;
   height: 40px;
-  margin-left: 20px;
   background-color: var(--el-color-primary);
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
   transition: background-color 0.3s;
 }
-.chat footer .input-area .buttons .send:hover:not(:disabled) {
+.buttons .send:hover:not(:disabled) {
   background-color: var(--el-color-primary-light-3);
 }
-.chat footer .input-area .buttons .send:disabled {
+.buttons .send:disabled {
   background-color: var(--el-color-primary-light-5);
   cursor: not-allowed;
 }
-.emoticons {
-  height: 100px;
-  width: 200px;
-  overflow: hidden;
-}
-.emoticon-item {
-  margin: 0;
-  padding: 5px;
-}
-.emoticon-item span {
-  font-size: 20px;
-}
-.emoticon-btn {
-  font-size: 26px;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.emoticon-popover {
-  min-width: 200px;
-  min-height: 40px;
-  /* 其他样式 */
-}
-
-/* 添加连接状态样式 */
 .connection-status {
   position: absolute;
   top: 10px;
@@ -945,7 +787,6 @@ onMounted(() => {
   background: var(--el-color-success-light-8);
   color: var(--el-color-success);
 }
-
 .connection-status.disconnected {
   background: var(--el-color-danger-light-8);
   color: var(--el-color-danger);

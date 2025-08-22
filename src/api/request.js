@@ -18,6 +18,15 @@ const requests = axios.create({
 
 requests.interceptors.request.use((config) => {
     console.log('🌐 [API] 发送请求:', config.url, config.params || config.data);
+    // 附带JWT到请求头
+    try {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers = config.headers || {};
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+    } catch (_) {}
+
     if (config.url.includes("/auth/")
         || config.url.includes("/register")
         || config.url.includes("/verifyCode/")

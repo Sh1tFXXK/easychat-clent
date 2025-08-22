@@ -29,7 +29,7 @@
                   : friend.friendNickName
               "
               :value="index"
-              :disabled="friend.sessionId !== '0'"
+              :disabled="chatList?.some(chat => chat.friendUserId === friend.friendUserId)"
             />
           </el-select>
         </div>
@@ -69,6 +69,7 @@ export default {
     };
 
     const friendList = computed(() => store.state.home.friendList);
+    const chatList = computed(() => store.state.home.chatList);
     const friendIndex = ref();
     const addChat = () => {
       if (friendIndex.value >= 0) {

@@ -180,6 +180,8 @@ export default {
       // 后续处理逻辑
     });
 
+    // 移除在菜单中直接提交在线用户列表的逻辑，改由 Home 统一处理
+
     return {
       user,
       reload,

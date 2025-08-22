@@ -121,7 +121,7 @@
                 v-for="(chat, index) in chatList"
                 :key="chat.sessionId"
                 :class="{ open: currentSession === chat.sessionId }"
-                @click="this.$emit('update:showChat', chat.sessionId)"
+                @click="$emit('openChat', { type: 'friend', id: chat.sessionId })"
               >
                 <figure
                   :class="
@@ -269,9 +269,9 @@ export default {
     ChatAdd,
   },
   props: {
-    showChat: String,
+    showChat: String, // This prop is no longer directly used for v-model but can be kept for watching current session
   },
-  emits: ["hideSidebar", "update:showChat", "showProfile"],
+  emits: ["hideSidebar", "openChat", "showProfile"],
   setup(props, { emit }) {
     const socket =
       getCurrentInstance().appContext.config.globalProperties.socket;
@@ -299,7 +299,7 @@ export default {
         (response) => {
           if (response) {
             chatList.value.splice(0, 0, response);
-            emit("update:showChat", response.sessionId);
+            emit("openChat", { type: 'friend', id: response.sessionId });
             // store.dispatch("home/getFriendList");
             store.dispatch("home/getFriendList", user.userId);
           } else {
@@ -330,7 +330,7 @@ export default {
       );
     };
     const handleSelect = (item) => {
-      emit("update:showChat", item.sessionId);
+      emit("openChat", { type: 'friend', id: item.sessionId });
     };
     const checkOnline = (userId) => {
       return onlineUsers.value.indexOf(userId) >= 0;
@@ -349,7 +349,7 @@ export default {
               (response) => {
                 if (response) {
                   if (showChat.value === chat.sessionId) {
-                    emit("update:showChat", "");
+                    emit("openChat", null); // Close chat window
                   }
                   chatList.value.splice(index, 1);
                   // store.dispatch("home/getFriendList");
@@ -440,7 +440,7 @@ export default {
                 : ""),
             duration: 5000,
             onClick: () => {
-              emit("update:showChat", chat.sessionId);
+              emit("openChat", { type: 'friend', id: chat.sessionId });
             },
           });
         }
@@ -459,12 +459,14 @@ export default {
           socket.emit("readMessages", showChat.value, user.userId);
         }
         // store.dispatch("home/getHistory");
-        store.dispatch("home/getHistory", {
-          id: user.userId,
-          session: showChat.value,
+        const paramsForHistory = {
+          id: String(user.userId),
+          session: String(showChat.value),
           page: 1,
           size: 15,
-        });
+        };
+        console.log("[SidebarChats] Dispatching getHistory with params:", JSON.parse(JSON.stringify(paramsForHistory)));
+        store.dispatch("home/getHistory", paramsForHistory);
       } else {
         currentSession.value = "";
       }

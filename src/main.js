@@ -22,7 +22,7 @@ window.ResizeObserver = class ResizeObserver extends _ResizeObserver {
 import { createApp } from 'vue'
 import { ElCollapseTransition } from 'element-plus'
 import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
-import io from 'socket.io-client'
+import io from 'socket.io-client/dist/socket.io'
 import VueParticles from 'vue-particles'
 import router from '@/router'
 import store from '@/store'
@@ -48,31 +48,27 @@ const app = createApp(App)
 const wsUrl = `ws://localhost:8082`;
 console.log('[Socket] 初始化连接:', wsUrl);
 
+const token = (() => { try { return localStorage.getItem('token') } catch (_) { return null } })();
 const socket = io(wsUrl, {
   path: "/socket.io",
   transports: ['websocket'],
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
-  autoConnect: true, // 启用自动连接
-  timeout: 10000,     // 连接超时时间
-})
-
-// 添加连接状态监听
-socket.on('connect', () => {
-  console.log('[Socket] 连接成功，ID:', socket.id);
+  autoConnect: false, 
+  timeout: 10000,
+  query: {
+    token: token
+  }
 });
 
-socket.on('connect_error', (error) => {
-  console.error('[Socket] 连接错误:', error);
-});
+// 将socket实例和Vuex store/router传入，以便在action中访问
+store.dispatch('socket/initSocket', { socket, store, router });
 
-socket.on('disconnect', (reason) => {
-  console.warn('[Socket] 连接断开，原因:', reason);
-});
-
-// 初始化 socket 状态管理
-store.dispatch('socket/initSocket', socket);
+// 只有在有token的情况下才尝试连接
+if (token) {
+  store.dispatch('socket/connectSocket', socket);
+}
 
 // 添加全局调试方法
 window.debugSocket = () => {

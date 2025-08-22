@@ -207,6 +207,12 @@ export default {
         loading.value = true;
         let result = await reqLogin(loginForm);
         if (result.success) {
+          // 持久化后端返回的JWT（假定后端返回 result.data.token）
+          if (result.data && result.data.token) {
+            try {
+              localStorage.setItem('token', result.data.token);
+            } catch (_) {}
+          }
           if (loginForm.loginFree) {
             setCookie("uid", result.data.userId, 7 * 24 * 3600);
           } else {

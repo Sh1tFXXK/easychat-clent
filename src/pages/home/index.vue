@@ -6,21 +6,24 @@
         <el-collapse-transition>
           <SidebarChats
             v-show="menu === 1"
-            v-model:showChat="showChat"
+            @openChat="openChatWindow"
             @hideSidebar="menu = $event"
             @showProfile="showProfile = $event"
           />
         </el-collapse-transition>
         <el-collapse-transition>
           <SidebarGroups
-            v-show="menu === 2"
+            v-if="menu === 2"
+            :key="sidebarGroupsKey"
             @hideSidebar="menu = $event"
+            @openGroup="openChatWindow"
+            @groupCreated="sidebarGroupsKey++"
           />
         </el-collapse-transition>
         <el-collapse-transition>
           <SidebarFriends
             v-show="menu === 3"
-            v-model:showChat="showChat"
+            @openChat="openChatWindow"
             @hideSidebar="menu = $event"
             @showProfile="showProfile = $event"
           />
@@ -39,9 +42,9 @@
         </el-collapse-transition>
       </div>
       <transition name="el-zoom-in-center">
-        <Chat v-show="showChat" v-model:showChat="showChat" />
+        <Chat v-if="activeChat" :showChat="activeChat" @update:showChat="activeChat = $event" />
       </transition>
-      <Empty v-show="showEmpty" />
+      <Empty v-if="!activeChat" />
       <Profile v-model:show="showProfile" />
     </div>
   </div>
@@ -58,7 +61,6 @@ import {
   watch,
 } from "vue";
 import { useStore } from "vuex";
-import { mockGetUserInfo, reqGetUserInfo } from "@/api";
 import { getCookie } from "@/utils/cookie";
 import Menu from "@/pages/home/menu";
 import SidebarChats from "@/pages/home/sidebar-chats";
@@ -67,6 +69,7 @@ import SidebarFriends from "@/pages/home/sidebar-friends";
 import SidebarFavorites from "@/pages/home/sidebar-favorites";
 import SidebarCollections from "@/pages/home/sidebar-collections";
 import Chat from "@/pages/home/chat";
+// import GroupChat from "@/pages/home/group"; // No longer needed
 import Empty from "@/pages/home/empty";
 import Profile from "@/pages/home/profile";
 
@@ -80,6 +83,7 @@ export default {
     SidebarFavorites,
     SidebarCollections,
     Chat,
+    // GroupChat,
     Empty,
     Profile,
   },
@@ -94,9 +98,9 @@ export default {
     });
 
     const menu = ref(1);
-    const showChat = ref("");
-    const showEmpty = ref(true);
+    const activeChat = ref(null); // { type: 'friend' | 'group', id: String }
     const showProfile = ref("");
+    const sidebarGroupsKey = ref(0);
 
     onMounted(async () => {
       console.log('[Home] 开始初始化...');
@@ -133,14 +137,13 @@ export default {
       }
       
       try {
-        // let result = await mockGetUserInfo();
         console.log('[Home] 获取用户信息...');
-        let result = await reqGetUserInfo({ id: user.userId.toString() });
-        console.log('[Home] 用户信息结果:', result);
-        if (result.success) {
-          user.avatar = result.data.avatar.startsWith('http') ? result.data.avatar : "https://wc-chat.oss-cn-beijing.aliyuncs.com" + result.data.avatar;
-          user.nickName = result.data.nickName;
-          socket.emit("online", user.userId, result.data.status);
+        const userInfoResult = await store.dispatch("home/getUserInfo", user.userId);
+        if (userInfoResult.success) {
+          const userInfo = userInfoResult.data;
+          user.avatar = userInfo.avatar.startsWith('http') ? userInfo.avatar : "https://wc-chat.oss-cn-beijing.aliyuncs.com" + userInfo.avatar;
+          user.nickName = userInfo.nickName;
+          socket.emit("online", user.userId, userInfo.status);
         }
         
         console.log('[Home] 获取聊天列表...');
@@ -183,24 +186,26 @@ export default {
       }
     });
 
-    watch(showChat, () => {
-      if (showChat.value !== "") {
-        showEmpty.value = false;
+    // Watcher is no longer needed as openChatWindow handles all cases.
+
+    const openChatWindow = (chat) => {
+      // This function now handles both direct object from groups
+      // and potentially strings from single chats if they are adapted to emit objects.
+      if (typeof chat === 'object' && chat.type && chat.id) {
+        activeChat.value = chat;
+      } else if (typeof chat === 'string') { // Fallback for single chats
+        activeChat.value = { type: 'friend', id: chat };
       }
-      if (showChat.value === "") {
-        setTimeout(() => {
-          showEmpty.value = true;
-        }, 400);
-      }
-    });
+    };
 
     provide("user", readonly(user));
 
     return {
       menu,
-      showChat,
-      showEmpty,
+      activeChat,
       showProfile,
+      sidebarGroupsKey,
+      openChatWindow,
     };
   },
 };

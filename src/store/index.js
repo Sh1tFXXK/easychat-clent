@@ -1,10 +1,14 @@
 import { createStore } from "vuex";
-import home from './home';
-import socket from './modules/socket';
+import chat from './modules/chat'
+import groups from './modules/groups'
+import socket from './modules/socket'
+import home from './home'
 
 export default createStore({
     modules: {
-        home,
-        socket
+        chat,
+        groups,
+        socket,
+        home
     }
 })

@@ -30,7 +30,10 @@
           <el-avatar
             :src="
               userInfo.avatar
-                ? userInfo.avatar.startsWith('http') ? userInfo.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + userInfo.avatar
+                ? userInfo.avatar.startsWith('http')
+                  ? userInfo.avatar
+                  : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' +
+                    userInfo.avatar
                 : ''
             "
             :size="80"
@@ -48,6 +51,13 @@
           <el-tag v-for="tag in tags" :key="tag">
             {{ tag }}
           </el-tag>
+          <el-button
+            v-if="show === user.userId"
+            type="primary"
+            size="small"
+            @click="addTag"
+            >+ 添加标签</el-button
+          >
         </el-space>
       </div>
       <div class="introduction">
@@ -119,8 +129,8 @@
 <script>
 import { computed, inject, ref, toRefs, watch } from "vue";
 import { useStore } from "vuex";
-import { ElMessage } from "element-plus";
-import { reqGetUserInfo, reqChangeAvatar } from "@/api";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { reqGetUserInfo, reqChangeAvatar, reqAddTag } from "@/api";
 import { formatDate } from "@/utils/date";
 
 export default {
@@ -188,6 +198,25 @@ export default {
       }
     };
 
+    const addTag = () => {
+      ElMessageBox.prompt("请输入标签", "添加标签", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        inputPattern: /^.{1,10}$/,
+        inputErrorMessage: "标签长度为1-10个字符",
+      })
+        .then(async ({ value }) => {
+          let result = await reqAddTag({ userId: user.userId, tag: value });
+          if (result.success) {
+            ElMessage.success("添加标签成功");
+            open();
+          } else {
+            ElMessage.error(result.message);
+          }
+        })
+        .catch(() => {});
+    };
+
     watch(show, () => {
       if (show.value) {
         isShow.value = true;
@@ -195,6 +224,7 @@ export default {
     });
 
     return {
+      user,
       isShow,
       open,
       close,
@@ -203,6 +233,7 @@ export default {
       tags,
       formatDate,
       changeAvatar,
+      addTag,
     };
   },
 };

@@ -231,7 +231,7 @@ export default {
   props: {
     showChat: String,
   },
-  emits: ["update:showChat", "hideSidebar", "showProfile"],
+  emits: ["openChat", "hideSidebar", "showProfile"],
   setup(props, { emit }) {
     const socket =
       getCurrentInstance().appContext.config.globalProperties.socket;
@@ -247,11 +247,13 @@ export default {
     const searchValue = ref("");
     const searchFriendList = computed(() =>
       friendList.value.filter((friend) => {
-        if (friend.friendRemark) {
-          return friend.friendRemark.includes(searchValue.value);
-        } else {
-          return friend.friendNickName.includes(searchValue.value);
-        }
+        // 确保 friendRemark 和 friendNickName 是字符串，以避免 .includes 在 undefined 上调用
+        const remark = friend.friendRemark || "";
+        const nickName = friend.friendNickName || "";
+        return (
+          remark.includes(searchValue.value) ||
+          nickName.includes(searchValue.value)
+        );
       })
     );
     const showFriendAdd = ref(false);
@@ -279,7 +281,7 @@ export default {
       if (chatIndex < 0) {
         chatList.value.splice(0, 0, response);
       }
-      emit("update:showChat", response.sessionId);
+      emit("openChat", { type: 'friend', id: response.sessionId });
     };
     const toChat = (friend) => {
       emit("hideSidebar", 1);
@@ -298,11 +300,11 @@ export default {
             } else {
               ElMessage.error({ message: "网络异常", showClose: true });
             }
-            emit("update:showChat", chatSession.sessionId);
+            emit("openChat", { type: 'friend', id: chatSession.sessionId });
           }
         );
       } else {
-        emit("update:showChat", chatSession.sessionId);
+        emit("openChat", { type: 'friend', id: chatSession.sessionId });
       }
     };
     const updateRemark = (friend) => {
@@ -341,7 +343,7 @@ export default {
                     if (
                       showChat.value === chatList.value[chatIndex].sessionId
                     ) {
-                      emit("update:showChat", "");
+                      emit("openChat", null);
                     }
                     chatList.value.splice(chatIndex, 1);
                   }
