@@ -241,7 +241,7 @@ export default {
     const userList = ref([]);
     const searchUser = async () => {
       if (username.value) {
-        if (username.value.length == 0 || username.value.length > 11) {
+        if (username.value.length < 6 || username.value.length > 11) {
           ElMessage.warning({ message: "查无此人！", showClose: true });
           return;
         }
@@ -253,11 +253,7 @@ export default {
         showSearchResults.value = true;
         let result = await reqSearchUsers({ username: username.value });
         if (result.success) {
-          if (result.data && result.data.id) {
-            userList.value = [result.data];
-          } else {
-            userList.value = [];
-          }
+          userList.value = result.data;
         } else {
           ElMessage.error({ message: "网络异常", showClose: true });
         }

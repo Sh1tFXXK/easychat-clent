@@ -67,7 +67,7 @@
           active-text="在线"
           inactive-text="隐身"
           :loading="statusLoading"
-          @change="changeStatus"
+          :before-change="changeStatus"
           size="default"
         />
       </div>
@@ -215,23 +215,26 @@ export default {
 
     const online = ref(true);
     const statusLoading = ref(false);
-    const changeStatus = (newStatus) => {
+    const changeStatus = () => {
       statusLoading.value = true;
-      const status = newStatus ? 1 : 0;
-      console.log(`[Status Change] Attempting to set status to: ${status} for user: ${user.userId}`);
-      
-      if (socket && socket.connected) {
-        socket.emit("changeStatus", user.userId, status);
-        console.log('[Status Change] Event emitted via WebSocket.');
-      } else {
-        console.error('[Status Change] Socket not connected. Cannot emit event.');
-        ElMessage.error("无法连接到服务器，请稍后重试。");
-      }
-
-      // Remove loading indicator after a short delay
-      setTimeout(() => {
-        statusLoading.value = false;
-      }, 500);
+      return new Promise((resolve) => {
+        socket.emit(
+          "changeStatus",
+          user.userId,
+          online.value === true ? 0 : 1,
+          (response) => {
+            if (response) {
+              ElMessage.success({ message: "设置成功", showClose: true });
+              statusLoading.value = false;
+              return resolve(true);
+            } else {
+              ElMessage.error({ message: "网络异常", showClose: true });
+              statusLoading.value = false;
+              return resolve(false);
+            }
+          }
+        );
+      });
     };
 
     const tags = ref([]);

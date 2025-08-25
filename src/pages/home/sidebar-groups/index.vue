@@ -1,87 +1,133 @@
 <template>
-  <div class="sidebar-groups">
-    <!-- 使用 v-if 确保数据存在再渲染 -->
-    <template v-if="groupList && groupList.length">
-      <div
-        v-for="group in groupList"
-        :key="group.groupId"
-        class="group-item"
-        @click="handleGroupSelect(group)"
-      >
-        <span class="group-name">{{ group.groupName }}</span>
-        <span class="member-count">{{ group.memberCount }}人</span>
-      </div>
-    </template>
-    <!-- 添加空状态显示 -->
-    <div v-else class="empty-state">
-      <el-empty description="暂无群聊" />
+  <div>
+    <div class="groups">
+      <header>
+        <div>
+          <span>Groups</span>
+          <ul>
+            <li>
+              <el-tooltip
+                effect="light"
+                content="新建群聊"
+                placement="bottom"
+                :offset="6"
+                :show-arrow="false"
+                :hide-after="100"
+                :enterable="false"
+              >
+                <el-button type="primary" link>
+                  <icon-mdi-comment-plus-outline style="font-size: 30px" />
+                </el-button>
+              </el-tooltip>
+              <el-tooltip
+                effect="light"
+                content="隐藏窗口"
+                placement="bottom"
+                :offset="6"
+                :show-arrow="false"
+                :hide-after="100"
+                :enterable="false"
+              >
+                <el-button
+                  type="primary"
+                  link
+                  @click="this.$emit('hideSidebar', -1)"
+                >
+                  <icon-mdi-minus style="font-size: 30px" />
+                </el-button>
+              </el-tooltip>
+            </li>
+          </ul>
+        </div>
+        <p>有群聊，不孤单。</p>
+      </header>
+      <form @submit.prevent>
+        <el-autocomplete
+          v-model="searchValue"
+          :fetch-suggestions="search"
+          :trigger-on-focus="false"
+          :maxlength="11"
+          size="large"
+          placeholder="搜索"
+          spellcheck="false"
+          clearable
+        >
+          <template #prefix><icon-ep-search /></template>
+        </el-autocomplete>
+      </form>
+      <el-empty
+          class="groups-empty"
+          description="还没有群聊哦..."
+        >
+          <template #image><icon-mdi-forum-remove-outline /></template>
+        </el-empty>
     </div>
   </div>
 </template>
 
-<script setup>
-import { computed, onMounted } from "vue";
-import { useStore } from "vuex";
-import { ElEmpty } from "element-plus";
-
-const store = useStore();
-const emit = defineEmits(['openGroup', 'hideSidebar']); // 定义emit
-
-// 使用computed确保响应性
-const groupList = computed(() => store.state.groups.groupList || []);
-
-// 组件挂载时获取群组列表
-onMounted(async () => {
-  try {
-    await store.dispatch("groups/fetchGroupList");
-  } catch (error) {
-    console.error("Failed to fetch group list:", error);
-  }
-});
-
-// 群组选择处理
-const handleGroupSelect = (group) => {
-  store.commit("groups/SET_CURRENT_GROUP", group);
-  // 添加这一行，触发openGroup事件，传递群组信息
-  emit('openGroup', { type: 'group', id: group.groupId });
+<script>
+import { ref } from "vue";
+export default {
+  name: "SidebarGroups",
+  setup() {
+    const searchValue = ref("");
+    const search = (queryString, callback) => {
+      let results = [];
+      callback(results);
+    };
+    return {
+      searchValue,
+      search,
+    };
+  },
 };
 </script>
 
 <style scoped>
-.sidebar-groups {
-  height: 100%;
-  overflow-y: auto;
-  padding: 16px;
+.groups {
+  display: flex;
+  width: 400px;
+  flex-flow: column nowrap;
+  flex: 1;
 }
-
-.group-item {
+.groups header {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: flex-end;
+  height: 100px;
+  padding: 0 30px 0 35px;
+}
+.groups header div {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  margin-bottom: 2px;
 }
-
-.group-item:hover {
-  background-color: var(--el-fill-color-light);
+.groups header span {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--theme-color-light-1);
 }
-
-.group-name {
-  font-weight: 500;
+.groups header p {
+  color: var(--theme-color-light-2);
+  margin: 0;
+  padding-left: 2px;
 }
-
-.member-count {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
+.groups header ul {
+  list-style: none;
+  margin-bottom: 0;
 }
-
-.empty-state {
-  height: 100%;
+.groups header ul li {
+  display: inline-block;
+}
+.groups form {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-flow: column nowrap;
+  padding: 24px 30px;
+}
+.groups-empty {
+  height: 730px;
+  justify-content: flex-start;
+  padding-top: 150px;
 }
 </style>

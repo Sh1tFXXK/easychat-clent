@@ -1,7 +1,6 @@
-import { mockGetChatList, mockGetFriendList, mockGetFriendVerify, mockGetHistory, reqGetChatList, reqGetFriendList, reqGetFriendVerify, reqGetHistory, reqGetUserInfo } from "@/api";
+import { mockGetChatList, mockGetFriendList, mockGetFriendVerify, mockGetHistory, reqGetChatList, reqGetFriendList, reqGetFriendVerify, reqGetHistory } from "@/api";
 
 const state = {
-    userInfo: {},
     onlineUsers: [],
     chatList: [],
     friendList: [],
@@ -24,14 +23,8 @@ const mutations = {
         console.log('[Store] 更新好友验证:', friendVerifyList);
         state.friendVerifyList = friendVerifyList
     },
-    SET_USER_INFO(state, userInfo) {
-        state.userInfo = userInfo;
-    },
     HISTORY(state, chatHistories) {
         state.chatHistories = chatHistories;
-    },
-    ADD_CHAT_HISTORY(state, message) {
-        state.chatHistories.push(message);
     }
 };
 const actions = {
@@ -170,7 +163,6 @@ const actions = {
         }
     },
     async getHistory({ commit }, params) {
-        console.log("[Store] getHistory action received params:", JSON.parse(JSON.stringify(params)));
         let result = await reqGetHistory(params);
         if (result.success) {
             if (result.data.records) {
@@ -187,23 +179,9 @@ const actions = {
                 commit("HISTORY", []);
             }
         }
-    },
-    async getUserInfo({ commit }, userId) {
-        try {
-            const response = await reqGetUserInfo({ id: userId });
-            if (response.success) {
-                commit("SET_USER_INFO", response.data);
-            }
-            return response;
-        } catch (error) {
-            console.error("Error fetching user info:", error);
-            return Promise.reject(error);
-        }
     }
 };
-const getters = {
-    userInfo: (state) => state.userInfo,
-};
+const getters = {};
 
 export default {
     namespaced: true,

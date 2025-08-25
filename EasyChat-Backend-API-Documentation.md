@@ -4,17 +4,17 @@
 
 ### 1.1 项目简介
 
-EasyChat 是一个基于 WebSocket 的实时聊天应用，支持一对一聊天、好友管理、群聊、图片和文件传输等功能。本文档详细描述了后端 API 接口规范，供前端开发人员参考。
+EasyChat 是一个基于 WebSocket 的实时聊天应用，支持一对一聊天、好友管理、图片和文件传输等功能。本文档详细描述了后端 API 接口规范，供前端开发人员参考。
 
 ### 1.2 技术栈
 
-- **后端**：Spring Boot、Spring Security、JWT、WebSocket (Socket.IO)、MySQL、Redis、MinIO
-- **前端**：Vue 3、Vuex、Socket.IO Client、Element Plus
+- **后端**：Spring Cloud、Netty-socketio、MySQL、Redis、MinIO
+- **前端**：Vue 3、Socket.IO、Element Plus
 - **通信**：RESTful API、WebSocket
 
 ### 1.3 基础 URL
 
-- **HTTP API**: `http://localhost:8081/api`
+- **HTTP API**: `http://localhost:8081`
 - **WebSocket**: `http://localhost:8081` (Socket.IO 路径: `/socket.io`)
 
 ### 1.4 前端连接配置
@@ -55,13 +55,13 @@ socket.on('reconnect_attempt', (attemptNumber) => {
 ```sql
 CREATE TABLE `users` (
   `id` varchar(20) NOT NULL COMMENT '用户ID',
-  `username` varchar(50) NOT NULL COMMENT '用户名',
-  `password` varchar(100) NOT NULL COMMENT '密码（加密存储）',
-  `nick_name` varchar(50) DEFAULT NULL COMMENT '昵称',
+  `username` varchar(20) NOT NULL COMMENT '用户名',
+  `password` varchar(100) NOT NULL COMMENT '密码',
+  `nick_name` varchar(20) DEFAULT NULL COMMENT '昵称',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像URL',
   `gender` tinyint(1) DEFAULT '2' COMMENT '性别: 0-女, 1-男, 2-未知',
-  `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
-  `status` tinyint(1) DEFAULT '0' COMMENT '在线状态: 0-离线, 1-在线',
+  `email` varchar(50) DEFAULT NULL COMMENT '邮箱',
+  `status` tinyint(1) DEFAULT '1' COMMENT '在线状态: 0-隐身, 1-在线',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -74,7 +74,7 @@ CREATE TABLE `users` (
 CREATE TABLE `user_tags` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '标签ID',
   `user_id` varchar(20) NOT NULL COMMENT '用户ID',
-  `tag_name` varchar(50) NOT NULL COMMENT '标签名称',
+  `tag_name` varchar(20) NOT NULL COMMENT '标签名称',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`)
@@ -87,7 +87,7 @@ CREATE TABLE `user_friends` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '关系ID',
   `user_id` varchar(20) NOT NULL COMMENT '用户ID',
   `friend_user_id` varchar(20) NOT NULL COMMENT '好友用户ID',
-  `friend_remark` varchar(50) DEFAULT NULL COMMENT '好友备注',
+  `friend_remark` varchar(20) DEFAULT NULL COMMENT '好友备注',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_user_friend` (`user_id`,`friend_user_id`),
@@ -101,8 +101,8 @@ CREATE TABLE `friend_verifies` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '验证ID',
   `sender_id` varchar(20) NOT NULL COMMENT '发送者ID',
   `receiver_id` varchar(20) NOT NULL COMMENT '接收者ID',
-  `apply_reason` varchar(255) DEFAULT NULL COMMENT '申请理由',
-  `remark` varchar(50) DEFAULT NULL COMMENT '备注',
+  `apply_reason` varchar(100) DEFAULT NULL COMMENT '申请理由',
+  `remark` varchar(20) DEFAULT NULL COMMENT '备注',
   `status` tinyint(1) DEFAULT '0' COMMENT '状态: 0-待处理, 1-已同意, 2-已拒绝, 3-已过期',
   `has_read` tinyint(1) DEFAULT '0' COMMENT '是否已读: 0-未读, 1-已读',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
@@ -115,7 +115,7 @@ CREATE TABLE `friend_verifies` (
 #### chat_sessions (聊天会话表)
 ```sql
 CREATE TABLE `chat_sessions` (
-  `id` varchar(50) NOT NULL COMMENT '会话ID',
+  `id` varchar(20) NOT NULL COMMENT '会话ID',
   `user_id` varchar(20) NOT NULL COMMENT '用户ID',
   `friend_user_id` varchar(20) NOT NULL COMMENT '好友用户ID',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
@@ -128,13 +128,14 @@ CREATE TABLE `chat_sessions` (
 #### chat_histories (聊天记录表)
 ```sql
 CREATE TABLE `chat_histories` (
-  `id` varchar(50) NOT NULL COMMENT '消息ID',
-  `session_id` varchar(50) NOT NULL COMMENT '会话ID',
+  `id` varchar(20) NOT NULL COMMENT '消息ID',
   `sender_id` varchar(20) NOT NULL COMMENT '发送者ID',
   `receiver_id` varchar(20) NOT NULL COMMENT '接收者ID',
+  `session_id` varchar(20) NOT NULL COMMENT '会话ID',
+  `type` tinyint(1) DEFAULT '0' COMMENT '消息类型: 0-文本, 1-图片, 2-文件, 3-语音',
   `content` text COMMENT '消息内容',
-  `content_type` tinyint(1) DEFAULT '0' COMMENT '内容类型: 0-文本, 1-图片, 2-文件, 3-语音',
   `has_read` tinyint(1) DEFAULT '0' COMMENT '是否已读: 0-未读, 1-已读',
+  `show_time` tinyint(1) DEFAULT '1' COMMENT '是否显示时间: 0-不显示, 1-显示',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_session_id` (`session_id`),
@@ -147,56 +148,13 @@ CREATE TABLE `chat_histories` (
 ```sql
 CREATE TABLE `verify_codes` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '验证码ID',
-  `email` varchar(100) NOT NULL COMMENT '邮箱',
-  `code` varchar(10) NOT NULL COMMENT '验证码',
+  `email` varchar(50) NOT NULL COMMENT '邮箱',
+  `code` varchar(6) NOT NULL COMMENT '验证码',
   `expire_time` datetime NOT NULL COMMENT '过期时间',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='验证码表';
-```
-
-#### groups (群组表)
-```sql
-CREATE TABLE `groups` (
-  `group_id` varchar(50) NOT NULL COMMENT '群组ID',
-  `group_name` varchar(100) NOT NULL COMMENT '群组名称',
-  `owner_id` varchar(20) NOT NULL COMMENT '群主用户ID',
-  `avatar` varchar(255) DEFAULT NULL COMMENT '群组头像',
-  `announcement` text COMMENT '群公告',
-  `created_at` datetime DEFAULT NULL COMMENT '创建时间',
-  PRIMARY KEY (`group_id`),
-  KEY `idx_owner_id` (`owner_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='群组表';
-```
-
-#### group_members (群组成员表)
-```sql
-CREATE TABLE `group_members` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `group_id` varchar(50) NOT NULL COMMENT '群组ID',
-  `user_id` varchar(20) NOT NULL COMMENT '用户ID',
-  `role` varchar(20) DEFAULT 'member' COMMENT '角色: owner, admin, member',
-  `joined_at` datetime DEFAULT NULL COMMENT '加入时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_group_user` (`group_id`,`user_id`),
-  KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='群组成员表';
-```
-
-#### group_messages (群组消息表)
-```sql
-CREATE TABLE `group_messages` (
-  `message_id` varchar(50) NOT NULL COMMENT '消息ID',
-  `group_id` varchar(50) NOT NULL COMMENT '群组ID',
-  `sender_id` varchar(20) NOT NULL COMMENT '发送者ID',
-  `content` text COMMENT '消息内容',
-  `message_type` varchar(20) DEFAULT 'text' COMMENT '消息类型: text, image, file',
-  `sent_at` datetime DEFAULT NULL COMMENT '发送时间',
-  PRIMARY KEY (`message_id`),
-  KEY `idx_group_id` (`group_id`),
-  KEY `idx_sender_id` (`sender_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='群组消息表';
 ```
 
 ### 2.2 数据传输对象 (DTO/VO)
@@ -1172,10 +1130,7 @@ const removeTag = async (tagName) => {
       userId: user.userId,
       tagName: tagName
     });
-    if (result.success) {//2. 验证标签是否已存在
-        if (userMapper.getUserTags(userId).contains(tag)) {
-            log.error("标签已存在");
-        }
+    if (result.success) {
       ElMessage.success('标签删除成功');
       // 更新标签列表
       const index = tags.value.findIndex(tag => tag === tagName);

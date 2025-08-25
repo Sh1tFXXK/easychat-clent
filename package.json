@@ -13,7 +13,6 @@
     "@wcjiang/notify": "^2.1.0",
     "axios": "^0.26.1",
     "core-js": "^3.8.3",
-    "date-fns": "^4.1.0",
     "element-plus": "^2.10.4",
     "json-bigint": "^1.0.0",
     "mockjs": "^1.1.0",
@@ -39,7 +38,7 @@
     "eslint": "^7.32.0",
     "eslint-plugin-vue": "^8.0.3",
     "unplugin-auto-import": "^0.8.5",
-    "unplugin-icons": "^0.13.4",
+    "unplugin-icons": "^0.14.3",
     "unplugin-vue-components": "^0.19.6"
   },
   "eslintConfig": {

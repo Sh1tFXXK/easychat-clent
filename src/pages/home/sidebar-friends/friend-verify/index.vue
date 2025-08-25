@@ -209,9 +209,6 @@ export default {
     const rejectApply = (friendVerify, index) => {
       ElMessage.warning({ message: "已拒绝", showClose: true });
       friendVerifyList.value[index].status = 2;
-      // 发送 'rejectApply' 事件来拒绝好友申请
-      // @param {string} senderId - 发送申请的用户ID
-      // @param {string} receiverId - 接收申请的用户ID
       socket.emit(
         "rejectApply",
         friendVerify.senderId,
@@ -243,10 +240,6 @@ export default {
             friendRemark: friend.remark,
             createTime: formatDate(new Date(), "YYYY-MM-DD HH:mm:ss"),
           };
-          // 发送 'agreeApply' 事件来同意好友申请
-          // @param {object} friendInfo - 包含好友关系的信息
-          // @param {function} callback - 服务器响应回调
-          // @param {any} callback.response - 响应数据
           socket.emit("agreeApply", friendInfo, (response) => {
             if (response) {
               ElMessage.success({ message: "已同意", showClose: true });
