@@ -103,8 +103,68 @@ export default {
       console.log('[Home] Store状态:', store.state);
       console.log('[Home] Store home模块:', store.state.home);
       
+      // 如果本地有有效 token，但当前 socket 未携带，主动更新并重连
+      try {
+        const readToken = () => {
+          try {
+            let t = localStorage.getItem('token');
+            if (!t) {
+              const m = document.cookie.match(new RegExp('(^| )' + 'token' + '=([^;]+)'));
+              t = m ? decodeURIComponent(m[2]) : null;
+            }
+            if (t && t.startsWith('Bearer ')) t = t.substring(7);
+            return t;
+          } catch (e) { return null; }
+        };
+        const isJwtExpired = (token) => {
+          if (!token) return true;
+          const parts = token.split('.');
+          if (parts.length !== 3) return true;
+          try {
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            const now = Math.floor(Date.now() / 1000);
+            return typeof payload.exp === 'number' ? (payload.exp - 30) <= now : true;
+          } catch { return true; }
+        };
+        const tk = readToken();
+        if (tk && !isJwtExpired(tk)) {
+          // 检查是否需要更新 Socket token
+          const currentQuery = socket?.io?.opts?.query?.token || '';
+          if (!currentQuery || currentQuery === '') {
+            console.log('[Home] 发现有效 token，但当前连接未携带，尝试更新并重连');
+            if (typeof window.updateSocketToken === 'function') {
+              window.updateSocketToken(tk);
+            }
+          }
+        }
+      } catch (e) { }
+
       user.userId = getCookie("uid");
       console.log('[Home] 用户ID:', user.userId);
+      // 等待 token 可用（最多等待5秒）
+      try {
+        const waitForTokenReady = () => new Promise((resolve) => {
+          const start = Date.now();
+          const timer = setInterval(() => {
+            const tk = localStorage.getItem('token');
+            const ready = (() => {
+              if (!tk) return false;
+              const parts = tk.split('.');
+              if (parts.length !== 3) return false;
+              try {
+                const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                const now = Math.floor(Date.now() / 1000);
+                return typeof payload.exp === 'number' ? (payload.exp - 30) > now : false;
+              } catch { return false; }
+            })();
+            if (ready || (Date.now() - start) > 5000) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 100);
+        });
+        await waitForTokenReady();
+      } catch (e) {}
       
       // 确保socket连接已建立，添加超时处理
       if (!socket.connected) {
@@ -124,7 +184,8 @@ export default {
                 clearTimeout(timeout);
                 resolve();
               });
-              socket.connect();
+              // 移除手动连接，让 main.js 统一管理连接
+              // socket.connect();
             }
           });
         } catch (error) {
@@ -135,6 +196,8 @@ export default {
       try {
         // let result = await mockGetUserInfo();
         console.log('[Home] 获取用户信息...');
+        console.log('[Home] 当前 token 状态:', localStorage.getItem('token') ? '存在' : '不存在');
+        console.log('[Home] 当前 uid:', user.userId);
         let result = await reqGetUserInfo({ id: user.userId.toString() });
         console.log('[Home] 用户信息结果:', result);
         if (result.success) {

@@ -134,7 +134,7 @@
 </template>
 
 <script>
-import { reactive, ref } from "vue";
+import { reactive, ref, getCurrentInstance } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { reqLogin } from "@/api";
@@ -207,6 +207,28 @@ export default {
         loading.value = true;
         let result = await reqLogin(loginForm);
         if (result.success) {
+          // 保存后端返回的 token（兼容多字段名/直接字符串）
+          let token = result.data?.token || result.data?.accessToken || result.data?.jwt;
+          if (!token && typeof result.data === 'string' && result.data.split('.').length === 3) {
+            token = result.data;
+          }
+          console.log('[Login] 登录响应:', result);
+          console.log('[Login] 解析到的 token:', token ? token.substring(0, 20) + '...' : '(未获取到)');
+          if (token) {
+            try {
+              localStorage.setItem('token', token);
+              document.cookie = `token=${encodeURIComponent(token)}; path=/`;
+            } catch (e) {}
+            // 使用新 token 断开并重连 Socket
+            try {
+              if (typeof window.updateSocketToken === 'function') {
+                window.updateSocketToken(token);
+                console.log('[Login] 已使用新 token 触发重连');
+              }
+            } catch (e) {
+              // 忽略重连异常，后续页面进入后会按当前 token 新建连接
+            }
+          }
           if (loginForm.loginFree) {
             setCookie("uid", result.data.userId, 7 * 24 * 3600);
           } else {

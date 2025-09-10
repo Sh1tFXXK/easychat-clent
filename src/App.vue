@@ -20,11 +20,7 @@ export default {
 
     provide("reload", reload);
 
-    onMounted(() => {
-      if (socket) {
-        socket.connect();
-      }
-    });
+    // 移除自动 connect，连接由 main.js 持有并按 token 控制
 
     return {
       isLoad,

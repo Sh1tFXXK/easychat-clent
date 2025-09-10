@@ -1,0 +1,228 @@
+openapi: 3.0.3
+info:
+  title: EASYCHAT CLIENT API (inferred)
+  version: 1.0.0
+  description: "OpenAPI spec inferred from frontend api calls (src/api/index.js). Verify with backend implementation."
+servers:
+  - url: http://localhost:8081
+paths:
+  /auth/login:
+    post:
+      summary: 登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: 登录成功，返回用户信息与 token
+          content:
+            application/json:
+              schema:
+                type: object
+  /auth/logout:
+    post:
+      summary: 注销
+      responses:
+        '200':
+          description: 注销成功
+  /user/register:
+    post:
+      summary: 用户注册
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 注册成功
+  /user/verifyCode/send:
+    post:
+      summary: 发送验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 发送成功
+  /user/verifyCode/validate:
+    post:
+      summary: 验证验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 验证成功
+  /user/username/validate:
+    post:
+      summary: 验证用户名
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 验证结果
+  /user/password/validate:
+    post:
+      summary: 验证密码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 验证结果
+  /user/search:
+    get:
+      summary: 搜索用户
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 搜索结果
+  /user/user:
+    get:
+      summary: 获取用户信息
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 用户信息
+    post:
+      summary: 编辑用户信息
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 修改成功
+  /user/user/changeAvatar:
+    post:
+      summary: 更换头像
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 修改成功
+  /user/user/changePassword:
+    post:
+      summary: 修改密码
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 修改成功
+  /user/user/addTag:
+    post:
+      summary: 添加标签
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 成功
+  /user/user/removeTag:
+    post:
+      summary: 删除标签
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 成功
+  /chat/chats:
+    get:
+      summary: 获取聊天列表
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 聊天列表
+  /user/friends:
+    get:
+      summary: 获取好友列表
+      responses:
+        '200':
+          description: 好友列表
+  /user/friendVerify:
+    get:
+      summary: 好友验证列表
+      responses:
+        '200':
+          description: 验证列表
+  /chat/chats/chatHistory:
+    get:
+      summary: 获取聊天历史
+      parameters:
+        - in: query
+          name: chatId
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 历史消息
+  /chat/chats/savePictureMsg:
+    post:
+      summary: 保存图片消息
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 成功
+  /chat/chats/saveFileMsg:
+    post:
+      summary: 保存文件消息
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 成功
+components: {}

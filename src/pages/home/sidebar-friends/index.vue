@@ -239,10 +239,10 @@ export default {
     const user = inject("user");
 
     const { showChat } = toRefs(props);
-    const friendList = computed(() => store.state.home.friendList);
-    const friendVerifyList = computed(() => store.state.home.friendVerifyList);
-    const chatList = computed(() => store.state.home.chatList);
-    const onlineUsers = computed(() => store.state.home.onlineUsers);
+    const friendList = computed(() => (store.state.home && Array.isArray(store.state.home.friendList)) ? store.state.home.friendList : []);
+    const friendVerifyList = computed(() => (store.state.home && Array.isArray(store.state.home.friendVerifyList)) ? store.state.home.friendVerifyList : []);
+    const chatList = computed(() => (store.state.home && Array.isArray(store.state.home.chatList)) ? store.state.home.chatList : []);
+    const onlineUsers = computed(() => (store.state.home && Array.isArray(store.state.home.onlineUsers)) ? store.state.home.onlineUsers : []);
     const hideBadge = ref(true);
     const searchValue = ref("");
     const searchFriendList = computed(() =>

@@ -48,33 +48,100 @@ const app = createApp(App)
 const wsUrl = `ws://localhost:8082`;
 console.log('[Socket] 初始化连接:', wsUrl);
 
-const socket = io(wsUrl, {
-  path: "/socket.io",
-  transports: ['websocket'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  autoConnect: true, // 启用自动连接
-  timeout: 10000,     // 连接超时时间
-})
+// 读取 token（优先 localStorage，其次 cookie）
+function readToken() {
+  try {
+    let t = localStorage.getItem('token');
+    if (!t) {
+      const m = document.cookie.match(new RegExp('(^| )' + 'token' + '=([^;]+)'));
+      t = m ? decodeURIComponent(m[2]) : null;
+    }
+    if (t && t.startsWith('Bearer ')) {
+      t = t.substring(7);
+    }
+    return t;
+  } catch (e) {
+    return null;
+  }
+}
 
-// 添加连接状态监听
-socket.on('connect', () => {
-  console.log('[Socket] 连接成功，ID:', socket.id);
-});
+// 判定 JWT 是否过期（提前30秒）
+function isJwtExpired(token) {
+  if (!token) return true;
+  const parts = token.split('.');
+  if (parts.length !== 3) return true;
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof payload.exp !== 'number') return true;
+    return (payload.exp - 30) <= now;
+  } catch {
+    return true;
+  }
+}
 
-socket.on('connect_error', (error) => {
-  console.error('[Socket] 连接错误:', error);
-});
+let token = readToken();
+console.log('[Socket] 启动读取 token:', token ? token.substring(0, 20) + '...' : '(空)');
+if (token && isJwtExpired(token)) {
+  console.warn('[Socket] 本地 token 已过期，清理并不携带');
+  try {
+    localStorage.removeItem('token');
+    document.cookie = 'token=; Max-Age=0; path=/';
+  } catch (e) {}
+  token = null;
+}
 
-socket.on('disconnect', (reason) => {
-  console.warn('[Socket] 连接断开，原因:', reason);
-});
+function buildUrlWithToken(baseUrl, tk) {
+  if (tk) {
+    return `${baseUrl}?token=${encodeURIComponent(tk)}`;
+  }
+  return baseUrl;
+}
+
+function createSocket(currentToken) {
+  const url = buildUrlWithToken(wsUrl, currentToken);
+  console.log('[Socket] 使用URL创建连接:', url);
+  const s = io(url, {
+    path: "/socket.io",
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    autoConnect: false,
+    timeout: 10000
+  });
+
+  s.on('connect', () => {
+    console.log('[Socket] 连接成功，ID:', s.id);
+  });
+  s.on('connect_error', (error) => {
+    console.error('[Socket] 连接错误:', error);
+  });
+  s.on('disconnect', (reason) => {
+    console.warn('[Socket] 连接断开，原因:', reason);
+  });
+  if (currentToken) {
+    // 仅在存在有效 token 时连接
+    try { s.connect(); } catch (e) {}
+  }
+  return s;
+}
+
+// 全局 Socket 实例，确保只有一个
+let socket = null;
+
+// 初始化 Socket
+if (token) {
+  socket = createSocket(token);
+} else {
+  // 没有 token 时创建但不连接
+  socket = createSocket(null);
+}
 
 // 初始化 socket 状态管理
 store.dispatch('socket/initSocket', socket);
 
-// 添加全局调试方法
+// 添加全局调试方法（动态读取当前 socket）
 window.debugSocket = () => {
   console.log('=== Socket 调试信息 ===');
   console.log('连接状态:', socket.connected);
@@ -86,6 +153,35 @@ window.debugSocket = () => {
 };
 
 app.config.globalProperties.socket = socket
+
+// 提供全局方法以便登录/刷新后更新 token 并重建连接
+window.updateSocketToken = function(newToken) {
+  try {
+    // 先断开现有连接
+    if (socket && socket.connected) {
+      console.log('[Socket] 断开现有连接');
+      socket.disconnect();
+    }
+    
+    if (!newToken || isJwtExpired(newToken)) {
+      console.warn('[Socket] 更新的 token 无效或已过期，断开连接');
+      socket = createSocket(null);
+      app.config.globalProperties.socket = socket;
+      store.dispatch('socket/initSocket', socket);
+      return;
+    }
+    
+    socket = createSocket(newToken);
+    app.config.globalProperties.socket = socket;
+    store.dispatch('socket/initSocket', socket);
+    console.log('[Socket] 已使用新 token 重建连接');
+  } catch (e) {
+    console.error('[Socket] 更新 token 并重建失败', e);
+  }
+}
+
+// 防止重复创建 Socket 的全局标志
+window.socketInitialized = true;
 app.component(ElCollapseTransition.name, ElCollapseTransition)
 app.use(router)
 app.use(store)
