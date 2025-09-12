@@ -8,10 +8,11 @@
   <div class="header-user">
         <figure>
           <el-avatar
-            :src="
-              friend.avatar
+            :src=" isGroupChat
+              ? (groupDetail.avatar ? (groupDetail.avatar.startsWith('http') ? groupDetail.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + groupDetail.avatar) : '')
+              : (friend.avatar
                 ? friend.avatar.startsWith('http') ? friend.avatar : 'https://wc-chat.oss-cn-beijing.aliyuncs.com' + friend.avatar
-                : ''
+                : '')
             "
             size="large"
             shape="square"
@@ -23,12 +24,12 @@
           </el-avatar>
         </figure>
         <div>
-          <p>{{ friend.remark }}</p>
-          <small v-if="checkOnline(friend.userId)" class="success">
+          <p>{{ isGroupChat ? groupDetail.groupName || '群聊' : friend.remark }}</p>
+          <small v-if="!isGroupChat && checkOnline(friend.userId)" class="success">
             <icon-mdi-circle style="font-size: 12px" />
             <span>在 线</span>
           </small>
-          <small v-else class="info">
+          <small v-else-if="!isGroupChat" class="info">
             <icon-mdi-circle style="font-size: 12px" />
             <span>离 线</span>
           </small>
@@ -54,13 +55,15 @@
     </header>
     <el-scrollbar ref="scrollbarRef">
       <div class="chat-body" ref="chatBodyRef">
-        <div class="messages" v-if="chatHistoryList.length > 0">
+        <div class="messages" v-if="!isGroupChat && chatHistoryList.length > 0">
+          <!-- 单聊消息渲染 -->
           <div
             class="message-item"
             v-for="message in chatHistoryList"
             :key="message.id"
             :class="{ send: message.senderId === user.userId }"
           >
+            <!-- 保持原有单聊渲染 -->
             <div
               v-if="message.showTime === 1"
               class="divider"
@@ -166,9 +169,31 @@
             </div>
           </div>
         </div>
+        <div class="messages" v-else-if="isGroupChat && groupHistoryList.length > 0">
+          <!-- 群聊消息渲染（只读） -->
+          <div
+            class="message-item"
+            v-for="msg in groupHistoryList"
+            :key="msg.messageId || msg.id"
+            :class="{ send: msg.senderId === user.userId }"
+          >
+            <div class="message">
+              <div class="header">
+                <div>
+                  <span>{{ msg.senderId }}</span>
+                  <small>{{ typeof msg.sentAt === 'number' ? formatDate(new Date(msg.sentAt), 'YYYY-MM-DD HH:mm') : (msg.createTime ? formatDate(msg.createTime, 'YYYY-MM-DD HH:mm') : '') }}</small>
+                </div>
+              </div>
+              <div v-if="normalizeMsgType(msg) === 0" class="content">{{ resolveMsgText(msg) }}</div>
+              <div v-else-if="normalizeMsgType(msg) === 1" class="content">[图片消息，暂未预览]</div>
+              <div v-else-if="normalizeMsgType(msg) === 2" class="content">[文件消息，暂未预览]</div>
+              <div v-else class="content">{{ resolveMsgText(msg) }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </el-scrollbar>
-    <footer>
+    <footer v-if="!isGroupChat">
       <div class="input-area">
         <el-input
           ref="inputRef"
@@ -240,6 +265,53 @@
         </div>
       </div>
     </footer>
+    <footer v-else>
+      <div class="input-area">
+        <el-input
+          ref="inputRef"
+          type="textarea"
+          v-model="inputValue"
+          maxlength="200"
+          :autosize="{ minRows: 1, maxRows: 6 }"
+          resize="none"
+          spellcheck="false"
+          @blur="focusIndex = $event.target.selectionStart"
+          @focus="setFocusIndex"
+          @keyup.enter.exact="sendGroupText"
+          @keydown.enter.exact="$event.preventDefault()"
+        />
+        <div class="buttons">
+          <el-button type="info" size="large" link title="图片" @click="triggerImageUpload">
+            <icon-mdi-panorama-outline style="font-size: 26px" />
+          </el-button>
+          <input
+            ref="imageInput"
+            type="file"
+            accept="image/jpeg, image/png"
+            style="display: none"
+            @change="handleGroupImageUpload"
+          />
+          <el-button type="info" size="large" link title="文件" @click="triggerFileUpload">
+            <icon-mdi-folder-outline style="font-size: 26px" />
+          </el-button>
+          <input
+            ref="fileInput"
+            type="file"
+            style="display: none"
+            @change="handleGroupFileUpload"
+          />
+          <button
+            class="send"
+            type="button"
+            title="发送"
+            :disabled="inputValue.length === 0"
+            @click="sendGroupText"
+          >
+            <icon-ep-promotion style="font-size: 24px" />
+          </button>
+        </div>
+      </div>
+    </footer>
     <el-dialog v-model="showImagePreview" title="发送图片" width="30%">
       <div style="text-align: center">
         <el-image :src="previewImageUrl" style="max-width: 100%; max-height: 300px" />
@@ -290,7 +362,9 @@ import {
   computeMinuteDiff,
   formatDate,
 } from "@/utils/date";
-import { reqSavePictureMsg, reqSaveFileMsg } from "@/api";
+import { reqSavePictureMsg, reqSaveFileMsg, reqGetGroupDetail, reqGetGroupMessages } from "@/api";
+// 替换为引入群聊发送接口
+import { reqSendGroupText, reqSendGroupImage, reqSendGroupFile } from "@/api";
 import emoticons from "./emoticons.json";
 
 const props = defineProps({
@@ -315,9 +389,31 @@ watch(isConnected, (newValue) => {
 }, { immediate: true });
 
 const { showChat } = toRefs(props);
+const isGroupChat = computed(() => typeof showChat.value === 'string' && showChat.value.startsWith('group:'));
+const currentGroupId = computed(() => isGroupChat.value ? showChat.value.substring('group:'.length) : '');
+// 单聊相关
 const chatList = computed(() => store.state.home.chatList);
 const chatHistoryList = computed(() => store.state.home.chatHistories);
 const onlineUsers = computed(() => store.state.home.onlineUsers);
+// 群聊相关
+const groupDetail = reactive({ groupId: '', groupName: '', avatar: '', ownerId: '' });
+const groupHistoryList = reactive([]);
+// 规范化群消息类型：支持 0/1/2 或 'TEXT'/'IMAGE'/'FILE'
+const normalizeMsgType = (m) => {
+  const t = m?.messageType ?? m?.type;
+  if (t === 0 || t === 1 || t === 2) return t;
+  if (typeof t === 'string') {
+    const upper = t.toUpperCase();
+    if (upper === 'TEXT') return 0;
+    if (upper === 'IMAGE') return 1;
+    if (upper === 'FILE') return 2;
+  }
+  return 0; // 默认为文本
+};
+const resolveMsgText = (m) => {
+  const text = m?.content ?? m?.text ?? '';
+  return typeof text === 'string' ? text : String(text ?? '');
+};
 const friend = reactive({
   userId: "",
   avatar: "",
@@ -326,19 +422,48 @@ const friend = reactive({
 
 watch(
   () => showChat.value,
-  (val) => {
-    if (val) {
-      let chat = chatList.value.find((chat) => chat.sessionId === val);
-      if (chat) {
-        friend.userId = chat.friendUserId;
-        friend.avatar = chat.friendAvatar;
-        friend.remark = chat.friendRemark ? chat.friendRemark : chat.friendNickName;
+  async (val) => {
+    if (!val) return;
+    if (isGroupChat.value) {
+      // 群聊：加载群详情与消息
+      try {
+        if (currentGroupId.value) {
+          const [detailRes, msgRes] = await Promise.all([
+            reqGetGroupDetail(currentGroupId.value),
+            reqGetGroupMessages(currentGroupId.value, { page: 1, pageSize: 20 })
+          ]);
+          if (detailRes?.success && detailRes.data) {
+            groupDetail.groupId = detailRes.data.groupId;
+            groupDetail.groupName = detailRes.data.groupName;
+            groupDetail.avatar = detailRes.data.avatar || '';
+            groupDetail.ownerId = detailRes.data.ownerId || '';
+          } else {
+            groupDetail.groupId = currentGroupId.value;
+            groupDetail.groupName = '群聊';
+            groupDetail.avatar = '';
+            groupDetail.ownerId = '';
+          }
+          if (msgRes?.success && msgRes.data) {
+            const records = Array.isArray(msgRes.data.records) ? msgRes.data.records : (Array.isArray(msgRes.data) ? msgRes.data : []);
+            groupHistoryList.splice(0, groupHistoryList.length, ...records);
+          } else {
+            groupHistoryList.splice(0, groupHistoryList.length);
+          }
+        }
+      } catch (e) {
+        groupHistoryList.splice(0, groupHistoryList.length);
       }
+      return; // 不执行单聊逻辑
+    }
+    // 单聊：保持原有逻辑
+    let chat = chatList.value.find((chat) => chat.sessionId === val);
+    if (chat) {
+      friend.userId = chat.friendUserId;
+      friend.avatar = chat.friendAvatar;
+      friend.remark = chat.friendRemark ? chat.friendRemark : chat.friendNickName;
     }
   },
-  {
-    immediate: true,
-  }
+  { immediate: true }
 );
 
 const scrollbarRef = ref();
@@ -424,9 +549,11 @@ const sendMessage = async () => {
 
       // 7. 滚动到底部
       nextTick(() => {
-        if (scrollbarRef.value) {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-        }
+        requestAnimationFrame(() => {
+          if (scrollbarRef.value) {
+            scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+          }
+        });
       });
 
       // 8. 获得输入框焦点
@@ -463,10 +590,10 @@ const addEmoticon = (emoticon) => {
 
 const imageInput = ref(null);
 const fileInput = ref(null);
+// 单聊触发器保持不变
 const triggerImageUpload = () => {
   imageInput.value.click();
 };
-
 const triggerFileUpload = () => {
   fileInput.value.click();
 };
@@ -558,7 +685,11 @@ const confirmSendImage = async () => {
           chatList.value.unshift(chat);
         }
         nextTick(() => {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+          requestAnimationFrame(() => {
+            if (scrollbarRef.value) {
+              scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+            }
+          });
         });
         ElMessage.success('图片发送成功');
       }
@@ -614,7 +745,11 @@ const confirmSendFile = async () => {
           chatList.value.unshift(chat);
         }
         nextTick(() => {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+          requestAnimationFrame(() => {
+            if (scrollbarRef.value) {
+              scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+            }
+          });
         });
         ElMessage.success('文件发送成功');
       }
@@ -636,6 +771,123 @@ const cancelSend = () => {
   selectedFile.value = null;
   previewImageUrl.value = '';
 };
+
+// 群聊发送：文本
+const sendGroupText = async () => {
+  const text = (inputValue.value || '').trim();
+  if (!text || !currentGroupId.value) return;
+  const payload = { groupId: currentGroupId.value, content: text };
+  try {
+    const res = await reqSendGroupText(payload);
+    // 不依赖返回体结构，直接本地追加一条发出的消息
+    groupHistoryList.push({
+      groupId: currentGroupId.value,
+      senderId: user.userId,
+      content: text,
+      messageType: 0,
+      sentAt: Date.now(),
+      messageId: 'local-' + Date.now()
+    });
+    inputValue.value = '';
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        if (scrollbarRef.value) {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        }
+      });
+    });
+  } catch (e) {
+    ElMessage.error('发送失败');
+  }
+};
+
+// 群聊发送：图片
+const handleGroupImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+    ElMessage.warning('仅支持 JPG/PNG');
+    return;
+  }
+  if (file.size / 1024 / 1024 > 2) {
+    ElMessage.warning('图片不能超过 2MB');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await reqSendGroupImage(currentGroupId.value, formData);
+    // 假设 data 返回文件 URL 或 Key
+    const url = res?.data || '';
+    groupHistoryList.push({
+      groupId: currentGroupId.value,
+      senderId: user.userId,
+      content: url,
+      messageType: 1,
+      sentAt: Date.now(),
+      messageId: 'local-img-' + Date.now()
+    });
+    event.target.value = '';
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        if (scrollbarRef.value) {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        }
+      });
+    });
+  } catch (e) {
+    ElMessage.error('图片发送失败');
+  }
+};
+
+// 群聊发送：文件
+const handleGroupFileUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size / 1024 / 1024 > 30) {
+    ElMessage.warning('文件不能超过 30MB');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await reqSendGroupFile(currentGroupId.value, formData);
+    const url = res?.data || '';
+    groupHistoryList.push({
+      groupId: currentGroupId.value,
+      senderId: user.userId,
+      content: url,
+      messageType: 2,
+      sentAt: Date.now(),
+      messageId: 'local-file-' + Date.now()
+    });
+    event.target.value = '';
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        if (scrollbarRef.value) {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        }
+      });
+    });
+  } catch (e) {
+    ElMessage.error('文件发送失败');
+  }
+};
+
+// 监听群聊消息（如果后端广播有该事件名，则接入；没有则不影响）
+try {
+  socket.on('receiveGroupMsg', (msg) => {
+    if (!msg || msg.groupId !== currentGroupId.value) return;
+    groupHistoryList.push(msg);
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        if (scrollbarRef.value) {
+          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+        }
+      });
+    });
+  });
+} catch (e) {}
 
 onMounted(() => {
   socket.on("receiveMsg", async (message) => {
@@ -664,9 +916,11 @@ onMounted(() => {
 
       // 滚动到底部
       nextTick(() => {
-        if (scrollbarRef.value) {
-          scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
-        }
+        requestAnimationFrame(() => {
+          if (scrollbarRef.value) {
+            scrollbarRef.value.setScrollTop(chatBodyRef.value.scrollHeight);
+          }
+        });
       });
       
       // 标记消息已读

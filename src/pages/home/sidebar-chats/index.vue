@@ -453,6 +453,11 @@ export default {
         let chatIndex = chatList.value.findIndex(
           (chat) => chat.sessionId === showChat.value
         );
+        if (chatIndex < 0) {
+          // 非单聊会话（例如群聊），跳过单聊特有逻辑
+          // 可在后续为群聊模式单独处理
+          return;
+        }
         let latestChatHistory = chatList.value[chatIndex].latestChatHistory;
         if (latestChatHistory && latestChatHistory.senderId !== user.userId) {
           chatList.value[chatIndex].latestChatHistory.hasRead = 1;

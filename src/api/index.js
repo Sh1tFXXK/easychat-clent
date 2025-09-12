@@ -47,3 +47,16 @@ export const reqGetHistory = (params) => axios.get('/chat/chats/chatHistory', { 
 export const reqSavePictureMsg = (data) => axios.post('/chat/chats/savePictureMsg', data);
 
 export const reqSaveFileMsg = (data) => axios.post('/chat/chats/saveFileMsg', data);
+
+// 群聊相关 API
+export const reqCreateGroup = (data) => axios.post('/group/groups', data);
+export const reqGetUserGroups = (userId) => axios.get(`/group/users/${encodeURIComponent(userId)}/groups`);
+export const reqGetGroupDetail = (groupId) => axios.get(`/group/groups/${encodeURIComponent(groupId)}`);
+export const reqUpdateGroup = (groupId, data) => axios.put(`/group/groups/${encodeURIComponent(groupId)}`, data);
+export const reqInviteGroupMembers = (groupId, members) => axios.post(`/group/groups/${encodeURIComponent(groupId)}/members`, members);
+export const reqRemoveGroupMember = (groupId, userId) => axios.delete(`/group/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`);
+export const reqGetGroupMessages = (groupId, params) => axios.get(`/group/groups/${encodeURIComponent(groupId)}/messages`, { params });
+export const reqSendGroupImage = (groupId, formData) => axios.post(`/group/messages/image`, formData, { params: { groupId }, headers: { 'Content-Type': 'multipart/form-data' } });
+export const reqSendGroupFile = (groupId, formData) => axios.post(`/group/messages/file`, formData, { params: { groupId }, headers: { 'Content-Type': 'multipart/form-data' } });
+export const reqSendGroupText = (data) => axios.post('/group/messages/text', data);
+export const reqDeleteGroup = (groupId) => axios.delete(`/group/groups/${encodeURIComponent(groupId)}`);

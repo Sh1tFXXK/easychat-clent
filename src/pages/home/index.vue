@@ -14,6 +14,7 @@
         <el-collapse-transition>
           <SidebarGroups
             v-show="menu === 2"
+            v-model:showChat="showChat"
             @hideSidebar="menu = $event"
           />
         </el-collapse-transition>
