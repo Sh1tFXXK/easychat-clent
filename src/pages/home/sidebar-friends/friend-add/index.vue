@@ -40,7 +40,7 @@
               <template #image><icon-mdi-account-search /></template>
             </el-empty>
             <el-space size="default" wrap>
-              <div class="user-item" v-for="user in userList" :key="user.id">
+              <div class="user-item" v-for="user in userList" :key="user.id || user.userId || Math.random()">
                 <div class="header">
                   <figure>
                     <el-avatar
@@ -92,10 +92,10 @@
                 <el-button
                   class="foot"
                   type="primary"
-                  :disabled="checkIsFriend(user.id)"
+                  :disabled="checkIsFriend(user.id || user.userId)"
                   @click="toApply(user)"
                 >
-                  <span v-if="checkIsFriend(user.id)">已添加</span>
+                  <span v-if="checkIsFriend(user.id || user.userId)">已添加</span>
                   <span v-else><icon-ep-plus />好友</span>
                 </el-button>
               </div>
@@ -241,41 +241,107 @@ export default {
     const userList = ref([]);
     const searchUser = async () => {
       if (username.value) {
-        if (username.value.length < 6 || username.value.length > 11) {
+        if (username.value.length < 1 || username.value.length > 11) {
           ElMessage.warning({ message: "查无此人！", showClose: true });
           return;
         }
+        
         let loadingInstance = ElLoading.service({
           target: searchResultRef.value,
           fullscreen: false,
           text: "搜索中...",
         });
-        showSearchResults.value = true;
-        let result = await reqSearchUsers({ username: username.value });
-        if (result.success) {
-          userList.value = result.data;
-        } else {
-          ElMessage.error({ message: "网络异常", showClose: true });
+        
+        try {
+          showSearchResults.value = true;
+          let result = await reqSearchUsers({ username: username.value });
+          
+          if (result && result.success) {
+            // 处理返回的数据格式 - 可能是单个对象或数组
+            let users = [];
+            
+            if (result.data) {
+              if (Array.isArray(result.data)) {
+                // 如果是数组
+                users = result.data;
+              } else if (typeof result.data === 'object') {
+                // 如果是单个用户对象，转换为数组
+                users = [result.data];
+              }
+              
+              // 过滤和验证用户数据
+              userList.value = users.filter(user => {
+                return user && (user.id || user.userId) && user.username;
+              }).map(user => ({
+                ...user,
+                id: user.id || user.userId, // 统一ID字段
+                nickName: user.nickName || user.nickname || user.username,
+                avatar: user.avatar || '',
+                gender: user.gender !== undefined ? user.gender : 2
+              }));
+              
+              console.log('[FriendAdd] Processed users:', userList.value);
+            } else {
+              console.warn('[FriendAdd] No data returned:', result);
+              userList.value = [];
+            }
+          } else {
+            console.error('[FriendAdd] Search failed:', result);
+            ElMessage.error({ message: result?.message || "搜索失败", showClose: true });
+            userList.value = [];
+          }
+        } catch (error) {
+          console.error('[FriendAdd] Search error:', error);
+          ElMessage.error({ message: "网络异常，请重试", showClose: true });
+          userList.value = [];
+        } finally {
+          loadingInstance.close();
         }
-        loadingInstance.close();
       } else {
         showSearchResults.value = false;
         userList.value = [];
       }
     };
     const checkIsFriend = (userId) => {
-      let index = friendList.value.findIndex(
-        (friend) => friend.friendUserId === userId
-      );
-      return index >= 0;
+      // 添加安全检查
+      if (!userId) {
+        return false;
+      }
+      
+      try {
+        let index = friendList.value.findIndex(
+          (friend) => friend.friendUserId === userId
+        );
+        return index >= 0;
+      } catch (error) {
+        console.error('[FriendAdd] checkIsFriend error:', error);
+        return false;
+      }
     };
     const toApply = (user) => {
-      friend.userId = user.id;
-      friend.username = user.username;
-      friend.nickName = user.nickName;
-      friend.avatar = user.avatar;
-      friend.gender = user.gender;
-      showApplyForm.value = true;
+      // 添加安全检查，防止null或undefined错误
+      if (!user) {
+        ElMessage.error({ message: "用户信息异常，请重新搜索", showClose: true });
+        return;
+      }
+      
+      // 检查必要的用户字段
+      if (!user.id && !user.userId) {
+        ElMessage.error({ message: "用户ID缺失，请重新搜索", showClose: true });
+        return;
+      }
+      
+      try {
+        friend.userId = user.id || user.userId; // 兼容不同的ID字段名
+        friend.username = user.username || '';
+        friend.nickName = user.nickName || user.nickname || '';
+        friend.avatar = user.avatar || '';
+        friend.gender = user.gender !== undefined ? user.gender : 2;
+        showApplyForm.value = true;
+      } catch (error) {
+        console.error('[FriendAdd] toApply error:', error);
+        ElMessage.error({ message: "处理用户信息时出错，请重试", showClose: true });
+      }
     };
 
     const friendVerifyList = computed(() => store.state.home.friendVerifyList);

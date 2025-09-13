@@ -3,44 +3,34 @@
     <Menu v-model:menu="menu" @showProfile="showProfile = $event" />
     <div class="content">
       <div class="sidebar">
-        <el-collapse-transition>
-          <SidebarChats
-            v-show="menu === 1"
-            v-model:showChat="showChat"
-            @hideSidebar="menu = $event"
-            @showProfile="showProfile = $event"
-          />
-        </el-collapse-transition>
-        <el-collapse-transition>
-          <SidebarGroups
-            v-show="menu === 2"
-            v-model:showChat="showChat"
-            @hideSidebar="menu = $event"
-          />
-        </el-collapse-transition>
-        <el-collapse-transition>
-          <SidebarFriends
-            v-show="menu === 3"
-            v-model:showChat="showChat"
-            @hideSidebar="menu = $event"
-            @showProfile="showProfile = $event"
-          />
-        </el-collapse-transition>
-        <el-collapse-transition>
-          <SidebarFavorites
-            v-show="menu === 4"
-            @hideSidebar="menu = $event"
-          />
-        </el-collapse-transition>
-        <el-collapse-transition>
-          <SidebarCollections
-            v-show="menu === 5"
-            @hideSidebar="menu = $event"
-          />
-        </el-collapse-transition>
+        <SidebarChats
+          v-if="menu === 1"
+          v-model:showChat="showChat"
+          @hideSidebar="handleHideSidebar"
+          @showProfile="showProfile = $event"
+        />
+        <SidebarGroups
+          v-if="menu === 2"
+          v-model:showChat="showChat"
+          @hideSidebar="handleHideSidebar"
+        />
+        <SidebarFriends
+          v-if="menu === 3"
+          v-model:showChat="showChat"
+          @hideSidebar="handleHideSidebar"
+          @showProfile="showProfile = $event"
+        />
+        <SidebarFavorites
+          v-if="menu === 4"
+          @hideSidebar="handleHideSidebar"
+        />
+        <SidebarCollections
+          v-if="menu === 5"
+          @hideSidebar="handleHideSidebar"
+        />
       </div>
       <transition name="el-zoom-in-center">
-        <Chat v-show="showChat" v-model:showChat="showChat" />
+        <Chat v-show="showChat" v-model:showChat="showChat" @showSidebar="handleShowSidebar" />
       </transition>
       <Empty v-show="showEmpty" />
       <Profile v-model:show="showProfile" />
@@ -52,6 +42,7 @@
 import {
   getCurrentInstance,
   onMounted,
+  onUnmounted,
   provide,
   reactive,
   readonly,
@@ -99,8 +90,75 @@ export default {
     const showEmpty = ref(true);
     const showProfile = ref("");
 
+    // 处理sidebar隐藏事件
+    const handleHideSidebar = (value) => {
+      console.log('[Home] 处理hideSidebar事件，接收值:', value, '当前menu:', menu.value);
+      try {
+        if (value === -1) {
+          // 隐藏当前sidebar，进入聊天全屏模式
+          // 如果当前有聊天窗口打开，保持聊天显示，否则显示空白页面
+          if (!showChat.value) {
+            showEmpty.value = true;
+          }
+          // 通过CSS隐藏sidebar
+          const sidebar = document.querySelector('.sidebar');
+          if (sidebar) {
+            sidebar.style.display = 'none';
+          }
+          console.log('[Home] 隐藏sidebar，进入全屏聊天模式');
+        } else if (value >= 1 && value <= 5) {
+          // 显示sidebar并切换到指定的sidebar
+          const sidebar = document.querySelector('.sidebar');
+          if (sidebar) {
+            sidebar.style.display = 'block';
+          }
+          menu.value = value;
+          console.log('[Home] 显示sidebar并切换到:', value);
+        } else {
+          console.warn('[Home] 无效的sidebar值:', value, '使用默认值1');
+          menu.value = 1; // 降级方案：切换到聊天列表
+        }
+      } catch (error) {
+        console.error('[Home] 处理hideSidebar事件时发生错误:', error);
+        // 降级方案：重置到默认状态
+        menu.value = 1;
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+          sidebar.style.display = 'block';
+        }
+      }
+    };
+
+    // 处理显示sidebar事件
+    const handleShowSidebar = (value) => {
+      console.log('[Home] 处理showSidebar事件，接收值:', value);
+      try {
+        // 显示sidebar并切换到指定的sidebar
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+          sidebar.style.display = 'block';
+        }
+        menu.value = value || 1; // 默认显示聊天列表
+        console.log('[Home] 显示sidebar并切换到:', menu.value);
+      } catch (error) {
+        console.error('[Home] 处理showSidebar事件时发生错误:', error);
+        // 降级方案：重置到默认状态
+        menu.value = 1;
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+          sidebar.style.display = 'block';
+        }
+      }
+    };
+
+    // 添加menu变化的监听，用于调试
+    watch(menu, (newVal, oldVal) => {
+      console.log('[Home] menu值变化:', oldVal, '->', newVal);
+    });
+
     onMounted(async () => {
       console.log('[Home] 开始初始化...');
+      console.log('[Home] 初始menu值:', menu.value);
       console.log('[Home] Store状态:', store.state);
       console.log('[Home] Store home模块:', store.state.home);
       
@@ -231,15 +289,26 @@ export default {
           console.error('[Home] 好友验证获取失败:', error);
         }
         
-        socket.on("onlineUsers", (onlineUsers) => {
+        // 注册socket事件监听器
+        const handleOnlineUsers = (onlineUsers) => {
           if (Array.isArray(onlineUsers)) {
             store.commit("home/ONLINEUSERS", onlineUsers);
           } else {
             store.commit("home/ONLINEUSERS", Object.keys(onlineUsers));
           }
-        });
+        };
+        
+        socket.on("onlineUsers", handleOnlineUsers);
         
         console.log('[Home] 初始化完成');
+        
+        // 清理函数，在组件卸载时移除事件监听器
+        onUnmounted(() => {
+          console.log('[Home] 组件卸载，清理事件监听器');
+          if (socket) {
+            socket.off("onlineUsers", handleOnlineUsers);
+          }
+        });
       } catch (error) {
         console.error('[Home] 初始化失败:', error);
         // 如果API请求失败，显示错误信息
@@ -265,6 +334,8 @@ export default {
       showChat,
       showEmpty,
       showProfile,
+      handleHideSidebar,
+      handleShowSidebar,
     };
   },
 };
@@ -283,5 +354,9 @@ export default {
 .sidebar {
   max-width: 400px;
   border-right: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+.sidebar.hidden {
+  display: none !important;
 }
 </style>

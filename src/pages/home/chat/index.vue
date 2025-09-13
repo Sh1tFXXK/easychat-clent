@@ -36,6 +36,9 @@
         </div>
       </div>
       <div class="header-action">
+        <el-button type="info" size="large" text title="显示侧边栏" @click="showSidebar">
+          <icon-ep-menu style="font-size: 26px" />
+        </el-button>
         <el-button type="success" size="large" text title="语音通话（敬请期待）">
           <icon-ep-phone style="font-size: 26px" />
         </el-button>
@@ -371,7 +374,12 @@ const props = defineProps({
   showChat: String,
 });
 
-const emit = defineEmits(['update:showChat']);
+const emit = defineEmits(['update:showChat', 'showSidebar']);
+
+// 显示侧边栏的方法
+const showSidebar = () => {
+  emit('showSidebar', 1); // 显示聊天列表侧边栏
+};
 
 const socket = getCurrentInstance().appContext.config.globalProperties.socket;
 const store = useStore();

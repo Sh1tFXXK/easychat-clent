@@ -83,6 +83,7 @@
             class="list-item"
             v-for="friend in searchFriendList"
             :key="friend.id"
+            @click="toChat(friend)"
           >
             <el-popover
               trigger="click"
@@ -272,7 +273,8 @@ export default {
       socket.emit("readVerify", user.userId);
     };
     const addNewChat = (response) => {
-      emit("hideSidebar", 1);
+      // 直接跳转到聊天内容，隐藏侧边栏
+      emit("hideSidebar", -1);
       let chatIndex = chatList.value.findIndex(
         (chat) => chat.sessionId === response.sessionId
       );
@@ -282,7 +284,8 @@ export default {
       emit("update:showChat", response.sessionId);
     };
     const toChat = (friend) => {
-      emit("hideSidebar", 1);
+      // 直接跳转到聊天内容，隐藏侧边栏
+      emit("hideSidebar", -1);
       let chatSession = chatList.value.find(
         (chat) => chat.friendUserId === friend.friendUserId
       );
