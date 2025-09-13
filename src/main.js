@@ -56,9 +56,7 @@ function readToken() {
       const m = document.cookie.match(new RegExp('(^| )' + 'token' + '=([^;]+)'));
       t = m ? decodeURIComponent(m[2]) : null;
     }
-    if (t && t.startsWith('Bearer ')) {
-      t = t.substring(7);
-    }
+    // 不要移除Bearer前缀，保持完整的token格式
     return t;
   } catch (e) {
     return null;
@@ -68,7 +66,14 @@ function readToken() {
 // 判定 JWT 是否过期（提前30秒）
 function isJwtExpired(token) {
   if (!token) return true;
-  const parts = token.split('.');
+  
+  // 移除Bearer前缀进行JWT解析
+  let jwtToken = token;
+  if (token.startsWith('Bearer ')) {
+    jwtToken = token.substring(7);
+  }
+  
+  const parts = jwtToken.split('.');
   if (parts.length !== 3) return true;
   try {
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -93,7 +98,9 @@ if (token && isJwtExpired(token)) {
 
 function buildUrlWithToken(baseUrl, tk) {
   if (tk) {
-    return `${baseUrl}?token=${encodeURIComponent(tk)}`;
+    // 确保token是完整的JWT格式
+    const fullToken = tk.startsWith('Bearer ') ? tk : `Bearer ${tk}`;
+    return `${baseUrl}?token=${encodeURIComponent(fullToken)}`;
   }
   return baseUrl;
 }
@@ -119,7 +126,39 @@ function createSocket(currentToken) {
   });
   s.on('disconnect', (reason) => {
     console.warn('[Socket] 连接断开，原因:', reason);
+    // 如果是服务器主动断开，尝试重连
+    if (reason === 'io server disconnect') {
+      console.log('[Socket] 服务器断开连接，尝试重连...');
+      setTimeout(() => {
+        if (currentToken) {
+          s.connect();
+        }
+      }, 2000);
+    }
   });
+  
+  // 添加页面可见性变化监听
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log('[Socket] 页面变为可见，检查连接状态');
+      if (!s.connected && currentToken) {
+        console.log('[Socket] 页面可见时重新连接');
+        s.connect();
+      }
+    } else {
+      console.log('[Socket] 页面变为隐藏');
+    }
+  });
+  
+  // 添加窗口焦点监听
+  window.addEventListener('focus', () => {
+    console.log('[Socket] 窗口获得焦点，检查连接状态');
+    if (!s.connected && currentToken) {
+      console.log('[Socket] 窗口焦点时重新连接');
+      s.connect();
+    }
+  });
+  
   if (currentToken) {
     // 仅在存在有效 token 时连接
     try { s.connect(); } catch (e) {}

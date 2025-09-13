@@ -50,7 +50,39 @@ const createMockSocketServer = () => {
           // 触发receiveMsg事件，模拟接收消息
           if (this.eventHandlers['receiveMsg']) {
             console.log('[MockSocket] 触发receiveMsg事件:', messageWithId);
-            this.eventHandlers['receiveMsg'](messageWithId);
+            // 传递消息和一个空的回调函数，避免 callback is not a function 错误
+            this.eventHandlers['receiveMsg'](messageWithId, () => {});
+          }
+        }, 300);
+        
+        return;
+      }
+      
+      // 特殊处理sendGroupMsg事件
+      if (event === 'sendGroupMsg') {
+        const message = args[0];
+        const callback = args[1];
+        
+        // 生成消息ID
+        const messageWithId = {
+          ...message,
+          messageId: uuidv4(),
+          id: uuidv4()
+        };
+        
+        console.log('[MockSocket] 模拟发送群聊消息:', messageWithId);
+        
+        // 模拟服务器响应
+        setTimeout(() => {
+          if (callback && typeof callback === 'function') {
+            callback(messageWithId);
+          }
+          
+          // 触发receiveGroupMsg事件，模拟接收群聊消息
+          if (this.eventHandlers['receiveGroupMsg']) {
+            console.log('[MockSocket] 触发receiveGroupMsg事件:', messageWithId);
+            // 传递消息和一个空的回调函数，避免 callback is not a function 错误
+            this.eventHandlers['receiveGroupMsg'](messageWithId, () => {});
           }
         }, 300);
         

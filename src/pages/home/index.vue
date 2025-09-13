@@ -51,7 +51,7 @@ import {
 } from "vue";
 import { useStore } from "vuex";
 import { mockGetUserInfo, reqGetUserInfo } from "@/api";
-import { getCookie } from "@/utils/cookie";
+import { getCookie, setCookie } from "@/utils/cookie";
 import Menu from "@/pages/home/menu";
 import SidebarChats from "@/pages/home/sidebar-chats";
 import SidebarGroups from "@/pages/home/sidebar-groups";
@@ -199,7 +199,25 @@ export default {
       } catch (e) { }
 
       user.userId = getCookie("uid");
-      console.log('[Home] 用户ID:', user.userId);
+      console.log('[Home] 从cookie获取用户ID:', user.userId);
+      
+      // 如果cookie中没有uid，尝试从token中解析
+      if (!user.userId) {
+        try {
+          const token = readToken();
+          if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            user.userId = payload.sub;
+            console.log('[Home] 从token解析用户ID:', user.userId);
+            // 设置cookie以备后用
+            setCookie("uid", user.userId, 7 * 24 * 3600);
+          }
+        } catch (e) {
+          console.error('[Home] 从token解析用户ID失败:', e);
+        }
+      }
+      
+      console.log('[Home] 最终用户ID:', user.userId);
       // 等待 token 可用（最多等待5秒）
       try {
         const waitForTokenReady = () => new Promise((resolve) => {
@@ -262,7 +280,13 @@ export default {
         if (result.success) {
           user.avatar = result.data.avatar.startsWith('http') ? result.data.avatar : "https://wc-chat.oss-cn-beijing.aliyuncs.com" + result.data.avatar;
           user.nickName = result.data.nickName;
+          console.log('[Home] 准备发送上线事件:', user.userId, result.data.status);
+          console.log('[Home] user.userId 类型:', typeof user.userId, '值:', user.userId);
+          console.log('[Home] 即将发送的参数:', [user.userId, result.data.status]);
           socket.emit("online", user.userId, result.data.status);
+          console.log('[Home] 上线事件已发送，参数:', user.userId, result.data.status);
+        } else {
+          console.error('[Home] 获取用户信息失败，无法发送上线事件:', result);
         }
         
         console.log('[Home] 获取聊天列表...');

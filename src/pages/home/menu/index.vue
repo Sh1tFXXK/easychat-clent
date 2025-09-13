@@ -175,8 +175,12 @@ export default {
       activeIndex.value = menu.value;
     });
 
-    socket.on("receiveMsg", (message) => {
+    socket.on("receiveMsg", (message, callback) => {
       console.log('收到新消息：', message);
+      // 检查 callback 是否是函数，避免运行时错误
+      if (typeof callback === 'function') {
+        callback();
+      }
       // 后续处理逻辑
     });
 

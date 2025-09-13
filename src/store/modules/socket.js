@@ -52,9 +52,16 @@ export default {
       // 连接断开
       socket.on('disconnect', (reason) => {
         console.warn('[Socket] 连接断开，原因:', reason);
+        commit('SET_CONNECTED', false);
+        
+        // 根据断开原因决定是否自动重连
         if (reason === 'io server disconnect') {
-          commit('SET_CONNECTED', false);
+          console.log('[Socket] 服务器主动断开，标记为断开状态');
+        } else if (reason === 'transport close' || reason === 'transport error') {
+          console.log('[Socket] 网络问题导致断开，准备重连');
+          commit('SET_RECONNECTING');
         } else {
+          console.log('[Socket] 其他原因断开:', reason);
           commit('SET_RECONNECTING');
         }
       });

@@ -242,6 +242,7 @@ export default {
           };
           socket.emit("agreeApply", friendInfo, (response) => {
             if (response) {
+              console.log('[FriendVerify] 同意好友申请成功，响应:', response);
               ElMessage.success({ message: "已同意", showClose: true });
               let index = friendVerifyList.value.findIndex(
                 (verify) =>
@@ -252,8 +253,15 @@ export default {
                 friendVerifyList.value[index].status = 1;
                 isShow.value = false;
               }
-              // store.dispatch("home/getFriendList");
-              store.dispatch("home/getFriendList", user.userId);
+              
+              // 延迟更新好友列表，确保后端数据已经更新
+              setTimeout(() => {
+                console.log('[FriendVerify] 开始更新好友列表');
+                store.dispatch("home/getFriendList", user.userId).then(() => {
+                  console.log('[FriendVerify] 好友列表更新完成');
+                });
+              }, 500);
+              
               emit("addChat", response);
             } else {
               ElMessage.error({ message: "网络异常", showClose: true });

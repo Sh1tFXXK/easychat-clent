@@ -376,7 +376,10 @@ export default {
       }, 1000);
 
       socket.on("receiveMsg", (message, callback) => {
-        callback();
+        // 检查 callback 是否是函数，避免运行时错误
+        if (typeof callback === 'function') {
+          callback();
+        }
         let chatIndex = chatList.value.findIndex(
           (chat) => chat.sessionId === message.sessionId
         );

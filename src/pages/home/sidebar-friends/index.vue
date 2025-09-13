@@ -248,11 +248,12 @@ export default {
     const searchValue = ref("");
     const searchFriendList = computed(() =>
       friendList.value.filter((friend) => {
-        if (friend.friendRemark) {
+        if (friend.friendRemark && typeof friend.friendRemark === 'string') {
           return friend.friendRemark.includes(searchValue.value);
-        } else {
+        } else if (friend.friendNickName && typeof friend.friendNickName === 'string') {
           return friend.friendNickName.includes(searchValue.value);
         }
+        return false; // 如果两个字段都为空或不是字符串，则不匹配
       })
     );
     const showFriendAdd = ref(false);
@@ -370,7 +371,10 @@ export default {
       hideBadge.value = index < 0;
 
       socket.on("receiveVerify", (friendVerify, callback) => {
-        callback();
+        // 检查 callback 是否是函数，避免运行时错误
+        if (typeof callback === 'function') {
+          callback();
+        }
         friendVerifyList.value.splice(0, 0, friendVerify);
         hideBadge.value = false;
         const notify = new Notify({
