@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <Menu v-model:menu="menu" @showProfile="showProfile = $event" />
+    <Menu v-model:menu="menu" @showProfile="showProfile = $event" @toggleSidebar="handleToggleSidebar" />
     <div class="content">
       <div class="sidebar">
         <SidebarChats
@@ -52,6 +52,7 @@ import {
 import { useStore } from "vuex";
 import { mockGetUserInfo, reqGetUserInfo } from "@/api";
 import { getCookie, setCookie } from "@/utils/cookie";
+import NavigationHelper from "@/utils/navigation";
 import Menu from "@/pages/home/menu";
 import SidebarChats from "@/pages/home/sidebar-chats";
 import SidebarGroups from "@/pages/home/sidebar-groups";
@@ -89,12 +90,15 @@ export default {
     const showChat = ref("");
     const showEmpty = ref(true);
     const showProfile = ref("");
+    const lastActiveMenu = ref(1); // 记录隐藏前的菜单状态
 
     // 处理sidebar隐藏事件
     const handleHideSidebar = (value) => {
       console.log('[Home] 处理hideSidebar事件，接收值:', value, '当前menu:', menu.value);
       try {
         if (value === -1) {
+          // 记录当前菜单状态，以便后续恢复
+          lastActiveMenu.value = menu.value;
           // 隐藏当前sidebar，进入聊天全屏模式
           // 如果当前有聊天窗口打开，保持聊天显示，否则显示空白页面
           if (!showChat.value) {
@@ -105,7 +109,7 @@ export default {
           if (sidebar) {
             sidebar.style.display = 'none';
           }
-          console.log('[Home] 隐藏sidebar，进入全屏聊天模式');
+          console.log('[Home] 隐藏sidebar，进入全屏聊天模式，记录当前菜单:', lastActiveMenu.value);
         } else if (value >= 1 && value <= 5) {
           // 显示sidebar并切换到指定的sidebar
           const sidebar = document.querySelector('.sidebar');
@@ -131,23 +135,47 @@ export default {
 
     // 处理显示sidebar事件
     const handleShowSidebar = (value) => {
-      console.log('[Home] 处理showSidebar事件，接收值:', value);
+      console.log('[Home] 处理showSidebar事件，接收值:', value, '上次活跃菜单:', lastActiveMenu.value);
       try {
         // 显示sidebar并切换到指定的sidebar
         const sidebar = document.querySelector('.sidebar');
         if (sidebar) {
           sidebar.style.display = 'block';
         }
-        menu.value = value || 1; // 默认显示聊天列表
+        // 如果没有指定值，恢复到上次活跃的菜单
+        menu.value = value || lastActiveMenu.value || 1;
         console.log('[Home] 显示sidebar并切换到:', menu.value);
       } catch (error) {
         console.error('[Home] 处理showSidebar事件时发生错误:', error);
         // 降级方案：重置到默认状态
-        menu.value = 1;
+        menu.value = lastActiveMenu.value || 1;
         const sidebar = document.querySelector('.sidebar');
         if (sidebar) {
           sidebar.style.display = 'block';
         }
+      }
+    };
+
+    // 处理切换sidebar事件（用于全屏聊天模式下的切换）
+    const handleToggleSidebar = (menuIndex) => {
+      console.log('[Home] 处理toggleSidebar事件，菜单索引:', menuIndex);
+      try {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+          const isHidden = sidebar.style.display === 'none';
+          if (isHidden) {
+            // 如果侧边栏隐藏，显示它并切换到指定菜单
+            sidebar.style.display = 'block';
+            menu.value = menuIndex;
+            console.log('[Home] 显示侧边栏并切换到菜单:', menuIndex);
+          } else {
+            // 如果侧边栏显示，隐藏它
+            sidebar.style.display = 'none';
+            console.log('[Home] 隐藏侧边栏');
+          }
+        }
+      } catch (error) {
+        console.error('[Home] 处理toggleSidebar事件时发生错误:', error);
       }
     };
 
@@ -156,11 +184,38 @@ export default {
       console.log('[Home] menu值变化:', oldVal, '->', newVal);
     });
 
+    // 监听全局事件
+    const setupGlobalEventListeners = () => {
+      // 监听侧边栏切换事件
+      window.addEventListener('switchSidebar', (event) => {
+        const { menuValue } = event.detail;
+        menu.value = menuValue;
+        console.log('[Home] 收到切换侧边栏事件:', menuValue);
+      });
+
+      // 监听打开聊天事件
+      window.addEventListener('openChat', (event) => {
+        const { chatId, chatType } = event.detail;
+        showChat.value = chatId;
+        console.log('[Home] 收到打开聊天事件:', chatId, chatType);
+      });
+
+      // 监听显示用户资料事件
+      window.addEventListener('showProfile', (event) => {
+        const { userId } = event.detail;
+        showProfile.value = userId;
+        console.log('[Home] 收到显示用户资料事件:', userId);
+      });
+    };
+
     onMounted(async () => {
       console.log('[Home] 开始初始化...');
       console.log('[Home] 初始menu值:', menu.value);
       console.log('[Home] Store状态:', store.state);
       console.log('[Home] Store home模块:', store.state.home);
+      
+      // 设置全局事件监听器
+      setupGlobalEventListeners();
       
       // 如果本地有有效 token，但当前 socket 未携带，主动更新并重连
       try {
@@ -313,6 +368,14 @@ export default {
           console.error('[Home] 好友验证获取失败:', error);
         }
         
+        console.log('[Home] 获取群聊列表...');
+        try {
+          await store.dispatch("home/getGroupList", user.userId);
+          console.log('[Home] 群聊列表获取成功:', store.state.home.groupList);
+        } catch (error) {
+          console.error('[Home] 群聊列表获取失败:', error);
+        }
+        
         // 注册socket事件监听器
         const handleOnlineUsers = (onlineUsers) => {
           if (Array.isArray(onlineUsers)) {
@@ -340,11 +403,18 @@ export default {
       }
     });
 
-    watch(showChat, () => {
+    watch(showChat, (newVal, oldVal) => {
+      console.log('[Home] showChat变化:', oldVal, '->', newVal);
       if (showChat.value !== "") {
         showEmpty.value = false;
       }
       if (showChat.value === "") {
+        // 当聊天窗口关闭时，恢复侧边栏显示
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && sidebar.style.display === 'none') {
+          console.log('[Home] 聊天窗口关闭，恢复侧边栏显示');
+          sidebar.style.display = 'block';
+        }
         setTimeout(() => {
           showEmpty.value = true;
         }, 400);
@@ -360,6 +430,7 @@ export default {
       showProfile,
       handleHideSidebar,
       handleShowSidebar,
+      handleToggleSidebar,
     };
   },
 };

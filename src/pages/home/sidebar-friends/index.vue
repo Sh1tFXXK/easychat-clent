@@ -298,11 +298,10 @@ export default {
           (response) => {
             if (response) {
               chatList.value.splice(0, 0, response);
-              chatSession = response;
+              emit("update:showChat", response.sessionId);
             } else {
               ElMessage.error({ message: "网络异常", showClose: true });
             }
-            emit("update:showChat", chatSession.sessionId);
           }
         );
       } else {

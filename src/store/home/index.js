@@ -1,11 +1,12 @@
-import { mockGetChatList, mockGetFriendList, mockGetFriendVerify, mockGetHistory, reqGetChatList, reqGetFriendList, reqGetFriendVerify, reqGetHistory } from "@/api";
+import { mockGetChatList, mockGetFriendList, mockGetFriendVerify, mockGetHistory, reqGetChatList, reqGetFriendList, reqGetFriendVerify, reqGetHistory, reqGetUserGroups } from "@/api";
 
 const state = {
     onlineUsers: [],
     chatList: [],
     friendList: [],
     friendVerifyList: [],
-    chatHistories: []
+    chatHistories: [],
+    groupList: []
 };
 const mutations = {
     ONLINEUSERS(state, onlineUsers) {
@@ -25,6 +26,10 @@ const mutations = {
     },
     HISTORY(state, chatHistories) {
         state.chatHistories = chatHistories;
+    },
+    GROUPLIST(state, groupList) {
+        console.log('[Store] 更新群聊列表:', groupList);
+        state.groupList = groupList;
     }
 };
 const actions = {
@@ -178,6 +183,28 @@ const actions = {
             } else {
                 commit("HISTORY", []);
             }
+        }
+    },
+    async getGroupList({ commit }, userId) {
+        try {
+            console.log('[Store] 开始获取群聊列表，用户ID:', userId);
+            let result = await reqGetUserGroups(userId.toString());
+            console.log('[Store] 群聊列表API返回:', result);
+            if (result.success && Array.isArray(result.data)) {
+                // 确保每个群聊都有 memberCount 字段
+                const groupList = result.data.map(group => ({
+                    ...group,
+                    memberCount: group.memberCount || group.members?.length || 0
+                }));
+                console.log('[Store] 处理后的群聊列表:', groupList);
+                commit("GROUPLIST", groupList);
+                console.log('✅ [Store] 群聊列表更新完成');
+            } else {
+                commit("GROUPLIST", []);
+            }
+        } catch (error) {
+            console.error('❌ 获取群聊列表失败:', error);
+            commit("GROUPLIST", []);
         }
     }
 };

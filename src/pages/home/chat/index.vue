@@ -52,7 +52,7 @@
           size="large"
           text
           title="关闭窗口"
-          @click="emit('update:showChat', '')"
+          @click="closeChat"
         >
           <icon-ep-close style="font-size: 26px" />
         </el-button>
@@ -305,7 +305,7 @@ const props = defineProps({
   showChat: String,
 });
 
-const emit = defineEmits(['update:showChat']);
+const emit = defineEmits(['update:showChat', 'showSidebar']);
 
 const socket = getCurrentInstance().appContext.config.globalProperties.socket;
 const store = useStore();
@@ -375,11 +375,37 @@ watch(
         if (currentGroup) {
           groupInfo.groupName = currentGroup.groupName || `群聊 ${groupId}`;
           groupInfo.avatar = currentGroup.avatar || '';
-          groupInfo.memberCount = currentGroup.memberCount || 0;
+          groupInfo.memberCount = currentGroup.memberCount || currentGroup.members?.length || 0;
+          console.log('[Chat] 找到群聊信息:', {
+            groupId,
+            groupName: groupInfo.groupName,
+            memberCount: groupInfo.memberCount,
+            rawData: currentGroup
+          });
         } else {
+          // 如果store中没有群聊信息，尝试重新获取
+          console.log('[Chat] store中未找到群聊信息，尝试重新获取:', groupId);
           groupInfo.groupName = `群聊 ${groupId}`;
           groupInfo.avatar = '';
           groupInfo.memberCount = 0;
+          
+          // 异步获取群聊详情
+          store.dispatch('home/getGroupList', user.userId).then(() => {
+            const updatedGroupList = store.state.home.groupList || [];
+            const updatedGroup = updatedGroupList.find(g => g.groupId === groupId);
+            if (updatedGroup) {
+              groupInfo.groupName = updatedGroup.groupName || `群聊 ${groupId}`;
+              groupInfo.avatar = updatedGroup.avatar || '';
+              groupInfo.memberCount = updatedGroup.memberCount || updatedGroup.members?.length || 0;
+              console.log('[Chat] 重新获取群聊信息成功:', {
+                groupId,
+                groupName: groupInfo.groupName,
+                memberCount: groupInfo.memberCount
+              });
+            }
+          }).catch(error => {
+            console.error('[Chat] 重新获取群聊信息失败:', error);
+          });
         }
         
         console.log('[Chat] 切换到群聊:', groupInfo.groupId, groupInfo.groupName);
@@ -433,7 +459,7 @@ const loadGroupHistory = async (groupId) => {
         return {
           id: msg.messageId || `group_msg_${Date.now()}_${index}`,
           senderId: msg.senderId,
-          senderNickName: msg.senderNickName || '群成员',
+          senderNickName: msg.senderUsername || msg.senderNickName || '群成员',
           senderAvatar: msg.senderAvatar || '',
           content: msg.content,
           type: messageType,
@@ -898,7 +924,7 @@ onMounted(() => {
       const newMessage = {
         id: message.messageId || Date.now(),
         senderId: String(message.senderId || ''),
-        senderNickName: message.senderNickName || '群成员',
+        senderNickName: message.senderUsername || message.senderNickName || '群成员',
         senderAvatar: message.senderAvatar || '',
         content: message.content,
         type: message.messageType === 'text' ? 0 : (message.messageType || 0),
@@ -919,6 +945,15 @@ onMounted(() => {
     }
   });
 });
+
+// 关闭聊天窗口的方法
+const closeChat = () => {
+  console.log('[Chat] 关闭聊天窗口');
+  // 发送事件通知父组件恢复侧边栏（不指定具体菜单，让父组件决定恢复到哪个菜单）
+  emit('showSidebar');
+  // 清空当前聊天
+  emit('update:showChat', '');
+};
 
 // 组件卸载时清理Socket监听器
 onBeforeUnmount(() => {

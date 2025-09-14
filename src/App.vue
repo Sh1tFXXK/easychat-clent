@@ -1,12 +1,20 @@
 <template>
-  <router-view v-if="isLoad"></router-view>
+  <div id="app" v-if="isLoad">
+    <PageTransition>
+      <router-view />
+    </PageTransition>
+  </div>
 </template>
 
 <script>
 import { nextTick, provide, ref, onMounted, getCurrentInstance } from "vue";
+import PageTransition from "@/components/PageTransition.vue";
 
 export default {
   name: "App",
+  components: {
+    PageTransition
+  },
   setup() {
     const isLoad = ref(true);
     const socket = getCurrentInstance().appContext.config.globalProperties.socket;
@@ -30,4 +38,8 @@ export default {
 </script>
 
 <style scoped>
+#app {
+  height: 100vh;
+  overflow: hidden;
+}
 </style>

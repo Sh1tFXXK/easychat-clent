@@ -26,6 +26,7 @@ import io from 'socket.io-client'
 import VueParticles from 'vue-particles'
 import router from '@/router'
 import store from '@/store'
+import routerManager from '@/utils/router'
 import App from '@/App.vue'
 
 import "@/mock/mockServer"
@@ -221,6 +222,10 @@ window.updateSocketToken = function(newToken) {
 
 // 防止重复创建 Socket 的全局标志
 window.socketInitialized = true;
+
+// 初始化路由管理器
+routerManager.init(router, store);
+
 app.component(ElCollapseTransition.name, ElCollapseTransition)
 app.use(router)
 app.use(store)

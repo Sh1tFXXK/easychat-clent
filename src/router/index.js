@@ -1,76 +1,104 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { getCookie } from '@/utils/cookie';
+import routerManager from '@/utils/router'
 
 const routes = [
     {
         path: '/login',
         component: () => import('@/pages/login'),
-        name: 'login'
+        name: 'login',
+        meta: {
+            title: '登录',
+            requiresAuth: false,
+            keepAlive: false
+        }
     },
     {
         path: '/register',
         component: () => import('@/pages/register'),
-        name: 'register'
+        name: 'register',
+        meta: {
+            title: '注册',
+            requiresAuth: false,
+            keepAlive: false
+        }
     },
     {
         path: '/home',
         component: () => import('@/pages/home'),
-        name: 'home'
+        name: 'home',
+        meta: {
+            title: '首页',
+            requiresAuth: true,
+            keepAlive: true
+        }
     },
     {
         path: '/findPassword',
         component: () => import('@/pages/password'),
-        name: 'findPassword'
+        name: 'findPassword',
+        meta: {
+            title: '找回密码',
+            requiresAuth: false,
+            keepAlive: false
+        }
     },
     {
         path: '/about',
         component: () => import('@/pages/about'),
-        name: 'about'
+        name: 'about',
+        meta: {
+            title: '关于我们',
+            requiresAuth: false,
+            keepAlive: false
+        }
+    },
+    {
+        path: '/navigation-demo',
+        component: () => import('@/pages/navigation-demo'),
+        name: 'navigationDemo',
+        meta: {
+            title: '导航系统演示',
+            requiresAuth: false,
+            keepAlive: false
+        }
+    },
+    {
+        path: '/redirect/:path(.*)',
+        component: () => import('@/pages/redirect'),
+        name: 'redirect',
+        meta: {
+            title: '重定向',
+            requiresAuth: false,
+            keepAlive: false
+        }
     },
     {
         path: '/',
         redirect: "/home"
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: () => import('@/pages/404'),
+        meta: {
+            title: '页面未找到',
+            requiresAuth: false,
+            keepAlive: false
+        }
     }
 ]
 
 const router = createRouter({
     history: createWebHashHistory(),
-    routes
-})
-
-function readToken() {
-    try {
-        let t = localStorage.getItem('token');
-        if (!t) {
-            const m = document.cookie.match(new RegExp('(^| )' + 'token' + '=([^;]+)'));
-            t = m ? decodeURIComponent(m[2]) : null;
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        // 页面跳转时的滚动行为
+        if (savedPosition) {
+            return savedPosition
+        } else {
+            return { top: 0 }
         }
-        if (t && t.startsWith('Bearer ')) t = t.substring(7);
-        return t;
-    } catch (e) { return null; }
-}
-
-function isJwtExpired(token) {
-    if (!token) return true;
-    const parts = token.split('.');
-    if (parts.length !== 3) return true;
-    try {
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-        const now = Math.floor(Date.now() / 1000);
-        return typeof payload.exp === 'number' ? (payload.exp - 30) <= now : true;
-    } catch { return true; }
-}
-
-router.beforeEach((to, from, next) => {
-    if (to.path === "/login" || to.path === "/register" || to.path === "/findPassword" || to.path === "/about") {
-        return next();
     }
-    const uid = getCookie("uid");
-    const token = readToken();
-    if (uid !== null && new RegExp(/\d{19}/).test(uid) && token && !isJwtExpired(token)) {
-        return next();
-    }
-    return next("/login");
 })
 
 export default router

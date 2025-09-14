@@ -135,11 +135,11 @@
 
 <script>
 import { reactive, ref, getCurrentInstance } from "vue";
-import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { reqLogin } from "@/api";
 import SlideVerify from "vue3-slide-verify";
 import { setCookie } from "@/utils/cookie";
+import NavigationHelper from "@/utils/navigation";
 
 export default {
   name: "Login",
@@ -147,7 +147,6 @@ export default {
     SlideVerify,
   },
   setup() {
-    const router = useRouter();
 
     const formRef = ref();
     const loading = ref(false);
@@ -183,7 +182,7 @@ export default {
 
     const superLogin = () => {
       setCookie("super", "1", 1);
-      router.push({ name: "home" });
+      NavigationHelper.toHome();
     };
 
     const showQRCode = ref(false);
@@ -234,7 +233,9 @@ export default {
           } else {
             setCookie("uid", result.data.userId);
           }
-          router.push({ name: "home" });
+          
+          // 使用新的导航系统跳转到首页
+          await NavigationHelper.toHome();
           ElMessage.success("登录成功！");
         } else {
           ElMessage.error("登录失败，用户名或密码不正确！");

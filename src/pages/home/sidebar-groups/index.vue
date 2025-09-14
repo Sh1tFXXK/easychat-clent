@@ -167,6 +167,7 @@
 
 <script>
 import { ref, computed, onMounted, inject, watch } from "vue";
+import { useStore } from 'vuex';
 import { ElMessage, ElMessageBox } from "element-plus";
 import { UserFilled } from '@element-plus/icons-vue';
 import { reqGetUserGroups, reqCreateGroup, reqDeleteGroup, reqInviteGroupMembers, reqRemoveGroupMember, reqSearchUsers } from "@/api";
@@ -175,9 +176,10 @@ export default {
   name: "SidebarGroups",
   emits: ['update:showChat'],
   setup(props, { emit }) {
+    const store = useStore();
     const user = inject('user', { userId: '' });
     const searchValue = ref("");
-    const groups = ref([]);
+    const groups = computed(() => store.state.home.groupList);
     const loading = ref(false);
 
     const createDialog = ref({ visible: false, groupName: '', submitting: false });
@@ -235,14 +237,8 @@ export default {
       if (!user?.userId) return;
       loading.value = true;
       try {
-        const res = await reqGetUserGroups(user.userId.toString());
-        if (res && res.success && Array.isArray(res.data)) {
-          groups.value = res.data;
-        } else {
-          groups.value = [];
-        }
+        await store.dispatch('home/getGroupList', user.userId);
       } catch (e) {
-        groups.value = [];
         ElMessage.error('获取群聊失败');
       } finally {
         loading.value = false;

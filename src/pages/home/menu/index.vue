@@ -7,31 +7,31 @@
         </a>
       </li>
       <li>
-        <a :class="{ active: activeIndex === 1 }" @click="activeIndex = 1" title="聊天">
+        <a :class="{ active: activeIndex === 1 }" @click="handleMenuClick(1)" title="聊天">
           <el-badge class="badge" is-dot :hidden="newMsgCount < 1">
             <icon-ep-chat-round />
           </el-badge>
         </a>
       </li>
       <li>
-        <a :class="{ active: activeIndex === 2 }" @click="activeIndex = 2" title="聊天组">
+        <a :class="{ active: activeIndex === 2 }" @click="handleMenuClick(2)" title="聊天组">
           <icon-ep-connection />
         </a>
       </li>
       <li>
-        <a :class="{ active: activeIndex === 3 }" @click="activeIndex = 3" title="好友">
+        <a :class="{ active: activeIndex === 3 }" @click="handleMenuClick(3)" title="好友">
           <el-badge class="badge" is-dot :hidden="true">
             <icon-ep-user />
           </el-badge>
         </a>
       </li>
       <li>
-        <a :class="{ active: activeIndex === 4 }" @click="activeIndex = 4" title="特别关心">
+        <a :class="{ active: activeIndex === 4 }" @click="handleMenuClick(4)" title="特别关心">
           <icon-ep-star />
         </a>
       </li>
       <li class="space">
-        <a :class="{ active: activeIndex === 5 }" @click="activeIndex = 5" title="收藏">
+        <a :class="{ active: activeIndex === 5 }" @click="handleMenuClick(5)" title="收藏">
           <icon-ep-collection />
         </a>
       </li>
@@ -103,11 +103,11 @@
 
 <script>
 import { getCurrentInstance, inject, ref, toRefs, watch } from "vue";
-import { useRouter } from "vue-router";
 import { useColorMode } from "@vueuse/core";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { reqLogout } from "@/api";
 import { setCookie } from "@/utils/cookie";
+import NavigationHelper from "@/utils/navigation";
 import ProfileEdit from "@/pages/home/menu/profile-edit";
 import Settings from "@/pages/home/menu/settings";
 import Search from "@/pages/home/menu/search";
@@ -124,13 +124,12 @@ export default {
   props: {
     menu: Number,
   },
-  emits: ["update:menu", "showProfile"],
+  emits: ["update:menu", "showProfile", "toggleSidebar"],
   setup(props, { emit }) {
     const socket =
       getCurrentInstance().appContext.config.globalProperties.socket;
     const user = inject("user");
     const reload = inject("reload");
-    const router = useRouter();
     const mode = useColorMode();
 
     const { menu } = toRefs(props);
@@ -140,6 +139,25 @@ export default {
     const showSettings = ref(false);
     const showSearch = ref(false);
     const showCalendar = ref(false);
+    // 检查是否处于全屏聊天模式
+    const isInFullscreenChat = () => {
+      const sidebar = document.querySelector('.sidebar');
+      return sidebar && sidebar.style.display === 'none';
+    };
+
+    // 处理菜单点击
+    const handleMenuClick = (menuIndex) => {
+      console.log('[Menu] 点击菜单:', menuIndex, '是否全屏聊天:', isInFullscreenChat());
+      
+      if (isInFullscreenChat()) {
+        // 如果处于全屏聊天模式，切换侧边栏显示状态
+        emit("toggleSidebar", menuIndex);
+      } else {
+        // 正常模式，直接切换菜单
+        activeIndex.value = menuIndex;
+      }
+    };
+
     const logout = () => {
       ElMessageBox.confirm("您确定退出吗？", "", {
         type: "warning",
@@ -161,9 +179,8 @@ export default {
           }
         },
       })
-        .then(() => {
-          router.push({ name: "login" });
-          ElMessage.success("已退出");
+        .then(async () => {
+          await NavigationHelper.logout();
         })
         .catch(() => {});
     };
@@ -194,6 +211,7 @@ export default {
       showSettings,
       showSearch,
       showCalendar,
+      handleMenuClick,
       logout,
     };
   },
