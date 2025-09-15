@@ -48,6 +48,8 @@ export const reqSavePictureMsg = (data) => axios.post('/chat/chats/savePictureMs
 
 export const reqSaveFileMsg = (data) => axios.post('/chat/chats/saveFileMsg', data);
 
+export const reqUploadVoice = (formData) => axios.post('/chat/chats/uploadVoice', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
 // 群聊相关 API
 export const reqCreateGroup = (data) => axios.post('/group/groups', data);
 export const reqGetUserGroups = (userId) => axios.get(`/group/users/${encodeURIComponent(userId)}/groups`);

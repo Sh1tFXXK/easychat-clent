@@ -163,6 +163,8 @@
                           ? "[文件]"
                           : chat.latestChatHistory && chat.latestChatHistory.type === 3
                           ? "[语音]"
+                          : message.type === 3
+                          ? "[语音]"
                           : ""
                       }}
                     </p>
